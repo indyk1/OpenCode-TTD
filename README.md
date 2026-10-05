@@ -50,7 +50,7 @@ Everything runs on .NET Aspire: the AppHost describes the app and its resources,
 ## Setup
 
 Prerequisites:
-- .NET SDK 10 or later (it includes `dnx`, which downloads Roslynk the first time an agent uses it)
+- .NET SDK 10 or later (it includes `dnx`, which downloads Roslynk the first time opencode starts in the project)
 - [Aspire CLI](https://aspire.dev/get-started/install-cli/)
 - Node.js 20+
 - git, with `user.name` and `user.email` set
@@ -79,8 +79,9 @@ Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`
 ## Roslynk, read-only
 [Roslynk](https://github.com/mrpmorris/Roslynk) (MIT) gives the developer and the debugger a live Roslyn compilation of the solution: go to definition, find references and callers, read a single member, and compile errors near-instantly instead of after a full `dotnet build`. `opencode.json` pins Roslynk 2.0.0 and starts it through `dnx`, so there is nothing to install.
 - **Read-only.** `opencode.json` denies every `roslynk_*` tool; `developer.md` and `debugger.md` allow its 20 read-only tools by name. Its 8 editing tools (`apply_patch`, `rename_symbol`, `rename_parameter`, `change_signature`, `extract_method`, `remove_unused_usings`, `apply_code_action`, `apply_code_fix`) write straight to disk and could reach the tests, the lock and the workflow files, so no agent gets them. Edits still go through each agent's own edit permissions.
-- **A shared background process.** The first agent to use Roslynk starts a daemon on `localhost:6502` (loopback only, no sign-in) that later sessions share. It unloads a solution after 30 idle minutes but keeps running after opencode exits. Its log is `~/.local/share/Roslynk/daemon.log`; stop it with `pkill -f Morris.Roslynk.Mcp`.
-- **Port 6502 taken?** Give the `roslynk` entry in `opencode.json` its own port: `"environment": { "Roslynk__Port": "6517" }`.
+- **A shared background process.** opencode starts Roslynk with every session in the project - only the developer and the debugger can use its tools - and the first start launches a daemon on `localhost:6502` (loopback only, no sign-in) that later sessions share. It unloads a solution after 30 idle minutes but keeps running after opencode exits. Its log is `~/.local/share/Roslynk/daemon.log`; stop it with `pkill -f Morris.Roslynk.Mcp`.
+- **Kept off the daemon's port.** The daemon accepts any local connection, including calls to its editing tools, so `debugger.md` denies `curl *:6502*` and the browser server blocks `http://localhost:6502` (`--blocked-origins`). Like the bash rules, this is a guard rail, not a sandbox.
+- **Port 6502 taken?** Give the `roslynk` entry in `opencode.json` its own port: `"environment": { "Roslynk__Port": "6517" }`, and change `6502` to match in the debugger's `curl *:6502*` rule and in the browser server's `--blocked-origins`.
 - **Not available?** The agents carry on with their usual tools and say so in their report.
 
 ## Commands
@@ -106,7 +107,7 @@ Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`
 | Work is saved only with your approval | `scripts/finish-change.sh` asks; no agent can otherwise commit |
 | Deployment needs you | `aspire deploy`, `publish` and `destroy` ask; cloud sign-in is yours |
 | The workflow cannot be rewritten by the agents | no agent can edit `.opencode/`, `opencode.json`, `scripts/`, `.workflow/`, `AGENTS.md` or `openspec/schemas/` |
-| Roslynk cannot change files | its 8 write tools are denied to every agent; only developer and debugger get its read-only tools |
+| No agent is offered Roslynk's write tools | its 8 write tools are denied to every agent and only developer and debugger get its read-only tools; the debugger's curl and browser are kept off the daemon's port - a guard rail, like the bash rules |
 
 Bash rules are guard rails, not a sandbox. The lock is what reliably catches a changed test, and checkpoint 3 shows the full result.
 

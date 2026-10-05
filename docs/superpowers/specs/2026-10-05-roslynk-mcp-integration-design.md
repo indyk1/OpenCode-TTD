@@ -167,3 +167,12 @@ Additions only; no existing text changes.
 - **Upstream moves fast**: 2.0.0 was a breaking release. Pinning plus the allowlist contain it; the README's upgrade steps make upgrades a reviewed change.
 - **Shared unauthenticated daemon**: it binds to loopback only, but any local process can call it, including its write tools. That is upstream's design and fine for local development, which is the only place this workflow runs it.
 - **Stale results**: if the file watcher misses a change, answers can be out of date. `get_diagnostics` is an accelerator; `dotnet test` is still the proof.
+
+## Changes after the final review
+
+A fresh review of the whole branch found three gaps in this design; they were fixed before merging.
+
+- **Roslynk's own server instructions conflict with this workflow.** opencode puts each connected server's instructions into the system prompt of every agent that can use any of its tools. Roslynk's say "You MUST use Roslynk over reading or hand-patching .cs ... files yourself" and "To fix a diagnostic, call apply_code_fix ... never hand-edit". `developer.md`, `debugger.md` and the skill now say that this guidance does not apply here, and the skill explicitly allows `reload_solution` when answers are stale (its own description says to call it only when told to).
+- **A failed load looks like loading.** Roslynk returns `error=Indexing` with `status=Faulted` when a solution fails to load. The skill now treats `status=Faulted`, or loading for more than about two minutes, as "Roslynk unavailable".
+- **The daemon is reachable from the debugger's own tools.** The debugger may `curl` localhost and drive a browser limited to localhost, and the daemon serves all 28 tools, including the write tools, to any local connection. `debugger.md` now denies `curl *:6502*` and the Playwright server blocks `http://localhost:6502` (`--blocked-origins`). The README calls this a guard rail, like the bash rules, and its enforcement row now reads "No agent is offered Roslynk's write tools" instead of "Roslynk cannot change files".
+- The README also now says that opencode starts Roslynk with every session in the project, not only when an agent uses it.

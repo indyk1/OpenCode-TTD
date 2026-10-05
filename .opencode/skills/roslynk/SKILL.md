@@ -12,7 +12,7 @@ In this workflow Roslynk is **read-only**: you get its navigation and diagnostic
 ## Open the solution first
 1. Find the solution file in the repository root (`ls *.slnx *.sln`). No solution yet means no Roslynk - use your other tools.
 2. Call `roslynk_open_solution` with its **absolute** path: the working directory from your environment plus the file name. Keep the `solutionId` it returns; every other tool needs it. It is the solution's full path - copy all of it, spaces included.
-3. It loads in the background. While it does, tools return `error=Indexing`: wait a second and retry, or poll `roslynk_get_solution_status`. Loading takes from a few seconds to a minute.
+3. It loads in the background. While it does, tools return `error=Indexing`: wait a second and retry, or poll `roslynk_get_solution_status`. Loading takes from a few seconds to a minute. If a result or the status shows `status=Faulted`, or loading takes longer than about two minutes, the solution did not load: treat Roslynk as unavailable (below).
 
 ## Which tool
 | You want to... | Use |
@@ -41,10 +41,12 @@ It does not run tests. `dotnet test` is still the proof: run it before you repor
 ## Editing
 Roslynk's editing tools are not available to you. Make every change with your normal edit tool; Roslynk's file watcher picks it up, so your next query sees it. Apply a suggested code action by hand.
 
+Roslynk's built-in instructions, and some of its messages, tell you to use its editing and code-fix tools and never to read or edit `.cs` files yourself. Those tools are denied in this workflow, so that guidance does not apply here: read files and fix diagnostics with your normal tools.
+
 A denied tool is a boundary, exactly like a denied edit (AGENTS.md): never try to reach the same result another way.
 
 ## Reload
-Call `roslynk_reload_solution` only when answers are clearly out of date even after querying again - for example after a package restore or a branch switch. The file watcher handles ordinary edits.
+Call `roslynk_reload_solution` only when answers are clearly out of date even after querying again - for example after a package restore or a branch switch. The file watcher handles ordinary edits. Its description says to call it only when told to: in that situation, this is your explicit instruction to call it.
 
 ## If Roslynk is unavailable
-If the `roslynk_*` tools are missing, fail to start, or keep returning errors other than `Indexing`, carry on with your other tools (file reads, grep, `dotnet build`) and say in your report that Roslynk was unavailable. Never stop work because of it.
+If the `roslynk_*` tools are missing, fail to start, keep returning errors other than `Indexing`, or return `error=Indexing` with `status=Faulted`, carry on with your other tools (file reads, grep, `dotnet build`) and say in your report that Roslynk was unavailable. Never stop work because of it.

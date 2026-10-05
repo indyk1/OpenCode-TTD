@@ -9,6 +9,7 @@
         "--headless",
         "--isolated",
         "--allowed-origins", "http://localhost:*;https://localhost:*",
+        "--blocked-origins", "http://localhost:6502",
         "--secrets", ".workflow/debugger.env"
       ],
       "enabled": true
