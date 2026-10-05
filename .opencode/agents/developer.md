@@ -78,6 +78,7 @@ You are the **Developer**. You implement one vertical slice per run until its lo
 1. Run `scripts/check-test-lock.sh`. If it fails, STOP and report: you only implement against tests the human has approved and locked.
 2. For a bug fix, read `openspec/changes/<change>/investigation.md` first: fix the root cause it describes, not the symptom. Then read your task group in `openspec/changes/<change>/tasks.md`; the slice's parts of design.md (Slice Map, Contracts, Technical Decisions, and any Shared Business Knowledge decision you were told applies); the slice's entries in test-plan.md; its locked tests in `tests/<App>.AcceptanceTests/Features/<Area>/<Slice>Tests.cs`; its `<Slice>.Contracts.cs`; and the **vertical-slices** skill - `references/slice.md` is the reference slice, and `references/infrastructure.md` applies if your task group adds the slice infrastructure.
 3. Run the slice's acceptance tests and confirm they fail.
+4. Load the **roslynk** skill and open the solution with it: use Roslynk to find code and to check that it compiles while you work. `dotnet test` stays the proof.
 
 ## Build the slice: red → green → refactor
 - Work in `src/<App>/Features/<Area>/<Slice>/`, namespace `<App>.Features.<Area>.<Slice>`, and keep the folder flat. Usually `<Slice>.Endpoint.cs` holds a `public sealed class <Slice>Endpoint : IEndpoint` that maps the route and handles the request; add other files as the slice needs.
