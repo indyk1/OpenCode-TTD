@@ -50,7 +50,7 @@ Everything runs on .NET Aspire: the AppHost describes the app and its resources,
 ## Setup
 
 Prerequisites:
-- .NET SDK 10 or later
+- .NET SDK 10 or later (it includes `dnx`, which downloads Roslynk the first time an agent uses it)
 - [Aspire CLI](https://aspire.dev/get-started/install-cli/)
 - Node.js 20+
 - git, with `user.name` and `user.email` set
@@ -76,6 +76,13 @@ Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`
 - Its credentials live in `.workflow/debugger.env`, which git ignores. The browser server receives the file as its secrets file and masks those values in everything it returns to the agent. If the agent ever needs to read the file itself, you are asked first. Use a local-only test account - never a real one.
 - The browser and Aspire MCP tools are denied to every agent except the debugger.
 
+## Roslynk, read-only
+[Roslynk](https://github.com/mrpmorris/Roslynk) (MIT) gives the developer and the debugger a live Roslyn compilation of the solution: go to definition, find references and callers, read a single member, and compile errors near-instantly instead of after a full `dotnet build`. `opencode.json` pins Roslynk 2.0.0 and starts it through `dnx`, so there is nothing to install.
+- **Read-only.** `opencode.json` denies every `roslynk_*` tool; `developer.md` and `debugger.md` allow its 20 read-only tools by name. Its 8 editing tools (`apply_patch`, `rename_symbol`, `rename_parameter`, `change_signature`, `extract_method`, `remove_unused_usings`, `apply_code_action`, `apply_code_fix`) write straight to disk and could reach the tests, the lock and the workflow files, so no agent gets them. Edits still go through each agent's own edit permissions.
+- **A shared background process.** The first agent to use Roslynk starts a daemon on `localhost:6502` (loopback only, no sign-in) that later sessions share. It unloads a solution after 30 idle minutes but keeps running after opencode exits. Its log is `~/.local/share/Roslynk/daemon.log`; stop it with `pkill -f Morris.Roslynk.Mcp`.
+- **Port 6502 taken?** Give the `roslynk` entry in `opencode.json` its own port: `"environment": { "Roslynk__Port": "6517" }`.
+- **Not available?** The agents carry on with their usual tools and say so in their report.
+
 ## Commands
 - `/setup <Title> - <what it does>` - create a new application (once)
 - `/feature <what you want>` - a change
@@ -99,6 +106,7 @@ Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`
 | Work is saved only with your approval | `scripts/finish-change.sh` asks; no agent can otherwise commit |
 | Deployment needs you | `aspire deploy`, `publish` and `destroy` ask; cloud sign-in is yours |
 | The workflow cannot be rewritten by the agents | no agent can edit `.opencode/`, `opencode.json`, `scripts/`, `.workflow/`, `AGENTS.md` or `openspec/schemas/` |
+| Roslynk cannot change files | its 8 write tools are denied to every agent; only developer and debugger get its read-only tools |
 
 Bash rules are guard rails, not a sandbox. The lock is what reliably catches a changed test, and checkpoint 3 shows the full result.
 
@@ -107,10 +115,11 @@ Bash rules are guard rails, not a sandbox. The lock is what reliably catches a c
 ## Layout
 ```
 AGENTS.md, GUIDE.md               rules every agent reads; the driver's guide
-opencode.json                     default agent, MCP servers (debugger only), global guard rails
+opencode.json                     default agent, MCP servers, each limited to the agents that need it; global guard rails
 .opencode/agents/                 the six agents
 .opencode/commands/               /setup, /feature, /bug, /deploy, /resume
 .opencode/skills/vertical-slices/ examples, platform patterns, the overview command
+.opencode/skills/roslynk/         when and how the developer and debugger use Roslynk
 .workflow/                        acceptance.lock (commit it), debugger.env (git-ignored)
 openspec/config.yaml              default schema + project context
 openspec/schemas/vsa-tdd/         the feature workflow's artifacts and their instructions
@@ -138,3 +147,4 @@ tests/<App>.ArchitectureTests/       slice isolation rules (yours)
 - **Fewer prompts for Shared/Domain:** in `developer.md`, change `"src/*/Shared/Domain/*": ask` to `allow`.
 - **Project rules for planning:** `openspec/config.yaml` (`context`, and `rules` per artifact). Keep it valid YAML: OpenSpec silently ignores a malformed file; senior-dev checks for this and stops.
 - **Weak-test detection:** Stryker.NET (Apache-2.0) mutation testing can be added to `scripts/verify.sh`.
+- **Upgrading Roslynk:** change the version in the `roslynk` command in `opencode.json` and read its release notes. Compare its tool list with the allowlists in `developer.md` and `debugger.md` - allow only tools it marks read-only - then update `.opencode/skills/roslynk/SKILL.md` to match.
