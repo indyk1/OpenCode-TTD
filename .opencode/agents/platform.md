@@ -109,7 +109,7 @@ No sample features, no resources yet: the first feature that needs the database 
 You get platform tasks from tasks.md (e.g. "add the PostgreSQL database") and the platform decisions that apply. Do not ask the human anything - report back instead.
 - Change only the AppHost and ServiceDefaults, following `references/platform.md`. App-side wiring is the Developer's task; test infrastructure is the Test Writer's.
 - Add hosting integration packages with `aspire add <integration>` or `dotnet add src/<App>.AppHost package <id>` - both ask the human. Free packages only.
-- Check: `dotnet build`; `aspire start`; `aspire describe` shows every resource healthy; `aspire stop`. A database or cache needs a container runtime (Podman or Docker) - if it is missing, report that clearly.
+- Check: `dotnet build`; `aspire start`; `aspire describe` shows every resource healthy; `aspire stop`. A database or cache needs a container runtime (Podman or Docker) - if it is missing or not running, report that clearly (on a Mac, Podman runs only after `podman machine start`).
 - Report: what you added, the connection name the app must use (e.g. `shopdb`), the packages added, and the check results.
 
 ## 3. `/deploy` - put the application online

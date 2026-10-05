@@ -10,7 +10,7 @@ Roslynk holds a live Roslyn compilation of the solution. It answers "where is th
 In this workflow Roslynk is **read-only**: you get its navigation and diagnostics tools, never its editing tools. Each tool's exact parameters and output are in its own description; this skill covers when to use which. Upstream's fuller guide is written for Claude Code, whose tool names differ: https://github.com/mrpmorris/Roslynk/tree/07b64a6eaaf1b3af946ba1b3b8d92c1978168b96/skills/roslynk
 
 ## Open the solution first
-1. Find the solution file in the repository root (`ls *.slnx *.sln`). No solution yet means no Roslynk - use your other tools.
+1. Find the solution file: list the repository root (`ls`) and look for a `.slnx` or `.sln` file. No solution yet means no Roslynk - use your other tools.
 2. Call `roslynk_open_solution` with its **absolute** path: the working directory from your environment plus the file name. Keep the `solutionId` it returns; every other tool needs it. It is the solution's full path - copy all of it, spaces included.
 3. It loads in the background. While it does, tools return `error=Indexing`: wait a second and retry, or poll `roslynk_get_solution_status`. Loading takes from a few seconds to a minute. If a result or the status shows `status=Faulted`, or loading takes longer than about two minutes, the solution did not load: treat Roslynk as unavailable (below).
 

@@ -40,9 +40,9 @@ The list comes from `opencode models` (or `opencode models --refresh` when you c
 
 The server binds to 127.0.0.1 only, rejects requests whose `Host` is not `127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding), and accepts writes only as `application/json` from its own origin (cross-site requests). It can only edit agent files that already exist.
 
-## Windows and WSL
+## macOS, Windows and WSL
 
-Run it where you run opencode. Under WSL the browser is opened on the Windows side (`wslview`, then `cmd.exe /c start`, then `explorer.exe`); if nothing opens, copy the printed address into your browser.
+Run it where you run opencode. On macOS the browser is opened with `open`. Under WSL it is opened on the Windows side (`wslview`, then `cmd.exe /c start`, then `explorer.exe`). If nothing opens, copy the printed address into your browser.
 
 ## Tests
 

@@ -54,10 +54,10 @@ Prerequisites:
 - [Aspire CLI](https://aspire.dev/get-started/install-cli/)
 - Node.js 20+
 - git, with `user.name` and `user.email` set
-- [opencode](https://opencode.ai)
+- [opencode](https://opencode.ai) 1.14.27 or later. `opencode.json` sets `"shell": "bash"`, so the agents' commands run in bash on every system - the same shell opencode's permission rules are written for. Older versions refuse to start with that setting.
 - Podman (free) or Docker, for databases and other resources. Docker Desktop needs a paid subscription in larger organisations.
 - Google Chrome, for the debugger's browser
-- bash: on Windows, run everything in WSL
+- bash: on macOS and Linux everything runs natively in a terminal (macOS has a few extra steps, below); on Windows, run everything in WSL
 
 Then:
 1. `npm install -g @fission-ai/openspec@latest`
@@ -67,6 +67,25 @@ Then:
 5. Commit.
 
 Do not run `openspec init --tools opencode` or `aspire agent init`: they add generic commands, skills and MCP configuration that bypass this workflow's checkpoints and permissions. The template already configures what it needs.
+
+### macOS
+Everything runs natively in Terminal; only Podman uses a virtual machine, for the containers. With [Homebrew](https://brew.sh):
+```bash
+xcode-select --install
+brew install --cask dotnet-sdk google-chrome
+brew install node podman
+curl -sSL https://aspire.dev/install.sh | bash
+```
+Then install opencode as its site describes, and the OpenSpec CLI as above.
+- **Open a new Terminal window** afterwards. The Aspire installer adds itself to the `PATH` in `~/.zshrc`, and opencode passes on the `PATH` of the Terminal it was started from.
+- **Chrome must be in `/Applications`** (where the installer puts it): it is the only place the debugger's browser looks.
+- **Podman** runs inside a Linux virtual machine. Create it once with `podman machine init`; start it with `podman machine start` after every restart of the Mac, or install Podman Desktop (`brew install --cask podman-desktop`), which can start it at login. Then add these lines to `~/.zshrc` and open a new Terminal window:
+  ```bash
+  export ASPIRE_CONTAINER_RUNTIME=podman
+  export DOCKER_HOST="unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')"
+  export TESTCONTAINERS_RYUK_DISABLED=true
+  ```
+  Testcontainers, which runs the acceptance tests' databases, looks only for Docker unless `DOCKER_HOST` points it at Podman. Its clean-up container (Ryuk) cannot run on rootless Podman on a Mac, so a test run that crashes can leave its containers running: `podman ps` lists them and `podman rm -f <name>` removes one. With Docker Desktop instead of Podman, none of this is needed.
 
 ### Existing solution
 Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`, then `aspire-apphost` and `aspire-servicedefaults` projects named `<App>.AppHost` and `<App>.ServiceDefaults`). Make sure `tests/<App>.AcceptanceTests` (NUnit, `Microsoft.AspNetCore.Mvc.Testing`, `NSubstitute`) and `tests/<App>.UnitTests` (NUnit, `NSubstitute`) exist. Recommended: the architecture tests from `.opencode/skills/vertical-slices/references/architecture-tests.md`. Describe the application in `openspec/config.yaml` (`  Application: <Title> - <what it does>` as the first line of the `context` block), write your platform decisions in `openspec/decisions/platform.md`, and lock any existing acceptance tests: `scripts/lock-tests.sh initial`.
@@ -79,7 +98,7 @@ Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`
 ## Roslynk, read-only
 [Roslynk](https://github.com/mrpmorris/Roslynk) (MIT) gives the developer and the debugger a live Roslyn compilation of the solution: go to definition, find references and callers, read a single member, and compile errors near-instantly instead of after a full `dotnet build`. `opencode.json` pins Roslynk 2.0.0 and starts it through `dnx`, so there is nothing to install.
 - **Read-only.** `opencode.json` denies every `roslynk_*` tool; `developer.md` and `debugger.md` allow its 20 read-only tools by name. Its 8 editing tools (`apply_patch`, `rename_symbol`, `rename_parameter`, `change_signature`, `extract_method`, `remove_unused_usings`, `apply_code_action`, `apply_code_fix`) write straight to disk and could reach the tests, the lock and the workflow files, so no agent gets them. Edits still go through each agent's own edit permissions.
-- **A shared background process.** opencode starts Roslynk with every session in the project - only the developer and the debugger can use its tools - and the first start launches a daemon on `localhost:6502` (loopback only, no sign-in) that later sessions share. It unloads a solution after 30 idle minutes but keeps running after opencode exits. Its log is `~/.local/share/Roslynk/daemon.log`; stop it with `pkill -f Morris.Roslynk.Mcp`.
+- **A shared background process.** opencode starts Roslynk with every session in the project - only the developer and the debugger can use its tools - and the first start launches a daemon on `localhost:6502` (loopback only, no sign-in) that later sessions share. It unloads a solution after 30 idle minutes but keeps running after opencode exits. Its log is `~/.local/share/Roslynk/daemon.log` (on macOS, `~/Library/Application Support/Roslynk/daemon.log`); stop it with `pkill -f Morris.Roslynk.Mcp`.
 - **Kept off the daemon's port.** The daemon accepts any local connection, including calls to its editing tools, so `debugger.md` denies `curl *:6502*` and the browser server blocks `http://localhost:6502` (`--blocked-origins`). Like the bash rules, this is a guard rail, not a sandbox.
 - **Port 6502 taken?** Give the `roslynk` entry in `opencode.json` its own port: `"environment": { "Roslynk__Port": "6517" }`, and change `6502` to match in the debugger's `curl *:6502*` rule and in the browser server's `--blocked-origins`.
 - **Not available?** The agents carry on with their usual tools and say so in their report.

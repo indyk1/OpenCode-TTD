@@ -1,6 +1,8 @@
 # shellcheck shell=bash
 # Shared helpers for the workflow scripts. Sourced, not executed.
 # Paths are relative to the repository root; every script cd's there first.
+# Keep every script to bash 3.2 and to tools that behave the same in GNU and BSD form:
+# macOS ships /bin/bash 3.2 and BSD grep, sed, awk and find.
 
 # shellcheck disable=SC2034 # used by the scripts that source this file
 LOCK_FILE=".workflow/acceptance.lock"
