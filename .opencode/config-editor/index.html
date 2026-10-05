@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent models</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --border: #e2e5ea;
+    --border-strong: #c8cdd6;
+    --text: #1c2230;
+    --muted: #5d6676;
+    --faint: #8790a0;
+    --accent: #2d5bd7;
+    --accent-hover: #2149b8;
+    --accent-text: #ffffff;
+    --accent-soft: #eaf0fd;
+    --warn-bg: #fff7e5;
+    --warn-border: #efd391;
+    --warn-text: #774c00;
+    --danger: #b42318;
+    --danger-bg: #fdeceb;
+    --danger-border: #f2b8b2;
+    --ok-bg: #eaf6ef;
+    --ok-border: #b3dcc3;
+    --ok-text: #155c37;
+    --focus: #2d5bd7;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+    --shadow-bar: 0 -4px 16px rgba(16, 24, 40, 0.06);
+    --radius: 8px;
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%235d6676' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111419;
+      --surface: #181c23;
+      --surface-2: #20252e;
+      --border: #2a303a;
+      --border-strong: #3b424e;
+      --text: #e5e8ee;
+      --muted: #a0a8b6;
+      --faint: #7b8494;
+      --accent: #7fa2ff;
+      --accent-hover: #9bb7ff;
+      --accent-text: #0c1222;
+      --accent-soft: #1d2945;
+      --warn-bg: #2b2311;
+      --warn-border: #6a5420;
+      --warn-text: #f1c86c;
+      --danger: #ff8e85;
+      --danger-bg: #351c1c;
+      --danger-border: #6e3330;
+      --ok-bg: #132a1e;
+      --ok-border: #2b5d42;
+      --ok-text: #93dbb0;
+      --focus: #8fb0ff;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.35);
+      --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23a0a8b6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 var(--font);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  [hidden] { display: none !important; }
+  code, .mono { font-family: var(--mono); font-size: 0.92em; }
+  code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  .wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  .top { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .top-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; padding-top: 20px; padding-bottom: 20px; }
+  .title-block { min-width: 0; flex: 1 1 260px; }
+  h1 { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 650; letter-spacing: -0.01em; }
+  .root { margin: 4px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .toolbar-field { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  .toolbar-field select { width: auto; min-width: 150px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 28px; padding: 0 10px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 550; white-space: nowrap;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--muted);
+  }
+  .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .badge[data-state="opencode"]::before { background: #2f9e62; }
+  .badge[data-state="anthropic-api"]::before { background: var(--accent); }
+  .badge[data-state="none"] { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+  .badge[data-state="none"]::before { background: #d39a17; }
+  .badge[data-state="loading"]::before { display: none; }
+
+  /* Controls */
+  button, select, input { font: inherit; color: inherit; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 36px; padding: 0 14px; border-radius: var(--radius);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+    font-size: 14px; font-weight: 550; cursor: pointer; white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { background: var(--surface-2); }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn-small { height: 30px; padding: 0 10px; font-size: 13px; }
+  .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn-quiet:hover:not(:disabled) { color: var(--text); }
+
+  select, input[type="text"] {
+    width: 100%; min-height: 38px; padding: 7px 10px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius);
+    background-color: var(--surface); color: var(--text); font-size: 14px;
+  }
+  select {
+    -webkit-appearance: none; appearance: none; padding-right: 32px; cursor: pointer;
+    background-image: var(--chevron); background-repeat: no-repeat; background-position: right 10px center;
+    text-overflow: ellipsis;
+  }
+  select:disabled { opacity: 0.6; cursor: not-allowed; }
+  input[type="text"] { font-family: var(--mono); font-size: 13.5px; }
+  select:hover:not(:disabled), input[type="text"]:hover { border-color: var(--faint); }
+  .toolbar-field select { min-height: 36px; height: 36px; padding-top: 0; padding-bottom: 0; }
+
+  .spinner {
+    width: 14px; height: 14px; flex: none; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent; opacity: 0.75;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+  /* Main */
+  main.wrap { flex: 1; padding-top: 20px; padding-bottom: 32px; }
+  .globals { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+  .globals strong { color: var(--text); font-weight: 550; }
+  .globals .item { white-space: nowrap; }
+  h2 { margin: 28px 0 10px; font-size: 13px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+  section:first-of-type h2 { margin-top: 4px; }
+  .list { display: grid; gap: 10px; }
+
+  .notice {
+    display: flex; align-items: flex-start; gap: 12px;
+    margin: 0 0 16px; padding: 12px 14px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface); font-size: 14px;
+  }
+  .notice p { margin: 0; flex: 1; }
+  .notice.ok { background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok-text); }
+  .notice.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+  .notice.error { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
+  .notice code { background: transparent; border-color: currentColor; border-color: color-mix(in srgb, currentColor 35%, transparent); }
+  .notice .dismiss { height: 24px; width: 24px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 6px; font-size: 18px; line-height: 1; flex: none; opacity: 0.8; }
+  .notice .dismiss:hover { opacity: 1; }
+
+  /* Agent cards */
+  .card {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(130px, 0.55fr);
+    gap: 12px 24px; align-items: start;
+    padding: 16px 18px; border-radius: var(--radius);
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+  }
+  .card.is-modified { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent), var(--shadow); }
+  .agent { min-width: 0; }
+  .agent-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-height: 22px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--dot, var(--faint)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--dot, var(--faint)) 20%, transparent); }
+  .agent-name { margin: 0; font-size: 15.5px; font-weight: 650; font-family: var(--mono); letter-spacing: -0.01em; }
+  .pill { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .pill.mode { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .pill.mode[data-mode="primary"], .pill.mode[data-mode="all"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .pill.modified { background: var(--accent); color: var(--accent-text); }
+  .desc {
+    margin: 6px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.45;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .field > label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+  .hint { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
+  .hint.was { color: var(--faint); }
+  .hint.was .mono { font-size: 12px; }
+  .hint.warn { color: var(--warn-text); }
+  .hint.error { color: var(--danger); }
+  .hint.warn::before, .hint.error::before { content: "\26A0\FE0E"; margin-right: 5px; }
+  .custom-input[aria-invalid="true"] { border-color: var(--danger); }
+
+  .row-warning {
+    grid-column: 1 / -1;
+    margin: 0; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+    background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text);
+  }
+  .row-warning::before { content: "\26A0\FE0E"; margin-right: 6px; }
+  .row-error { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--danger); }
+
+  .placeholder { padding: 28px; text-align: center; color: var(--muted); border: 1px dashed var(--border-strong); border-radius: var(--radius); }
+
+  /* Save bar */
+  .savebar { position: sticky; bottom: 0; z-index: 5; background: var(--surface); border-top: 1px solid var(--border); box-shadow: var(--shadow-bar); }
+  .savebar-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; }
+  .savebar-status { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 240px; }
+  .dirty-count { font-weight: 600; font-size: 14px; }
+  .dirty-count[data-count="0"] { color: var(--muted); font-weight: 500; }
+  .save-error { color: var(--danger); font-size: 13px; overflow-wrap: anywhere; }
+  .savebar-actions { display: flex; gap: 10px; }
+
+  .stopped { flex: 1; display: grid; place-items: center; padding: 24px 16px; }
+  .stopped-card { max-width: 440px; padding: 28px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); text-align: center; }
+  .stopped-card h1 { font-size: 19px; margin-bottom: 8px; }
+  .stopped-card p { margin: 0; color: var(--muted); }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 0 16px; }
+    .top-inner { padding-top: 16px; padding-bottom: 16px; }
+    .toolbar { width: 100%; }
+    .toolbar-field { flex: 1 1 100%; }
+    .toolbar-field select { flex: 1; }
+    .toolbar #refresh-btn { flex: 1; }
+    .card { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 12px; }
+    .desc { -webkit-line-clamp: 3; }
+    .savebar-actions { width: 100%; }
+    .savebar-actions .btn { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="title-block">
+      <h1>Agent models</h1>
+      <p class="root"><span class="sr-only">Project: </span><span class="mono" id="root">Loading…</span></p>
+    </div>
+    <div class="toolbar">
+      <span class="badge" id="source-badge" data-state="loading" role="status"><span class="spinner" aria-hidden="true"></span><span id="source-text">Loading models…</span></span>
+      <label class="toolbar-field" for="provider-filter">Providers
+        <select id="provider-filter" disabled><option>All providers</option></select>
+      </label>
+      <button type="button" class="btn" id="refresh-btn"><span class="spinner" aria-hidden="true" hidden></span><span class="label">Refresh model list</span></button>
+      <button type="button" class="btn btn-small btn-quiet" id="stop-btn">Stop editor</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main">
+  <div id="notices" aria-live="polite"></div>
+  <p class="globals" id="globals" hidden></p>
+  <section aria-labelledby="h-primary">
+    <h2 id="h-primary">Primary agents</h2>
+    <div class="list" id="list-primary"><div class="placeholder">Loading agents…</div></div>
+  </section>
+  <section aria-labelledby="h-sub" id="sub-section">
+    <h2 id="h-sub">Subagents</h2>
+    <div class="list" id="list-sub"></div>
+  </section>
+</main>
+
+<footer class="savebar">
+  <div class="wrap savebar-inner">
+    <div class="savebar-status">
+      <span class="dirty-count" id="dirty-count" data-count="0" aria-live="polite">No unsaved changes</span>
+      <span class="save-error" id="save-error" role="alert"></span>
+    </div>
+    <div class="savebar-actions">
+      <button type="button" class="btn" id="revert-btn" disabled>Revert</button>
+      <button type="button" class="btn btn-primary" id="save-btn" disabled>Save changes</button>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  'use strict';
+
+  const VARIANTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+  const MODEL_RE = /^[A-Za-z0-9._-]+\/[^\s]+$/;
+  const CUSTOM = '__custom__';
+  const FILTER_USED = '__used__';
+  const FILTER_ALL = '__all__';
+  const HEARTBEAT_MS = 60_000;
+  // README rule: the test reviewer must use a different model from the test writer.
+  const PAIR = ['test-writer', 'test-reviewer'];
+  const SOURCE_LABEL = { opencode: 'opencode', 'anthropic-api': 'Anthropic API', none: 'not available' };
+
+  const $ = (id) => document.getElementById(id);
+  const state = {
+    root: '',
+    global: null,
+    rows: [],
+    models: { source: 'loading', providers: {} },
+    allModels: new Set(),
+    filter: FILTER_USED,
+    filterChoice: null, // what the user picked; until then the default is the providers in use
+    refreshing: false,
+    saving: false,
+    offline: false,
+    stopped: false,
+    idleMinutes: 15,
+  };
+
+  // Tiny DOM helper; text always goes through textContent.
+  function h(tag, props, ...children) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(props || {})) {
+      if (value === undefined || value === null || value === false) continue;
+      if (key === 'class') node.className = value;
+      else if (key === 'text') node.textContent = value;
+      else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+      else node.setAttribute(key, value === true ? '' : value);
+    }
+    for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) node.append(child);
+    return node;
+  }
+
+  async function api(path, options) {
+    const res = await fetch(path, { cache: 'no-store', ...options });
+    let body = null;
+    try { body = await res.json(); } catch {}
+    if (!res.ok) {
+      const err = new Error((body && body.error) || `The editor server answered ${res.status}`);
+      err.body = body;
+      throw err;
+    }
+    return body;
+  }
+  const postJson = (path, data) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+
+  const providerOf = (id) => { const i = (id || '').indexOf('/'); return i > 0 ? id.slice(0, i) : ''; };
+  const isModified = (row) => row.cur.model !== row.orig.model || row.cur.variant !== row.orig.variant;
+  const isInvalid = (row) => row.custom && !MODEL_RE.test(row.cur.model);
+  const hasList = () => state.models.source === 'opencode' || state.models.source === 'anthropic-api';
+
+  function shortDescription(text) {
+    const parts = String(text || '').split(/(?<=[.!?])\s+/);
+    let s = parts[0] || '';
+    // Many descriptions open with just the role ("Debugger."); add the next sentence so it says something.
+    if (s.split(/\s+/).length < 4 && parts[1]) s += ' ' + parts[1];
+    return s;
+  }
+
+  const MODE_LABEL = { primary: 'Primary', subagent: 'Subagent', all: 'Primary + subagent' };
+
+  // ---------------------------------------------------------------------------
+  // Rendering
+  // ---------------------------------------------------------------------------
+
+  function setAgents(payload) {
+    state.root = payload.root;
+    state.global = payload.global;
+    state.rows = payload.agents.map((agent, index) => {
+      const orig = { model: agent.model || '', variant: agent.variant || '' };
+      return { agent, index, orig, cur: { ...orig }, custom: false, serverError: '' };
+    });
+    renderAll();
+  }
+
+  function renderAll() {
+    $('root').textContent = state.root;
+    $('root').title = state.root;
+    renderGlobals();
+    const primary = $('list-primary');
+    const sub = $('list-sub');
+    primary.replaceChildren();
+    sub.replaceChildren();
+    // Primary agents, then primary+subagent ("all"), then subagents; file order within each group.
+    const rank = (row) => ({ primary: 0, all: 1, subagent: 2 })[row.agent.mode] ?? 1;
+    for (const row of [...state.rows].sort((a, b) => rank(a) - rank(b) || a.index - b.index)) {
+      buildCard(row);
+      (row.agent.mode === 'subagent' ? sub : primary).append(row.el.card);
+    }
+    if (!primary.children.length) primary.append(h('div', { class: 'placeholder', text: 'No primary agents found.' }));
+    $('sub-section').hidden = !sub.children.length;
+    if (!state.rows.length) primary.replaceChildren(h('div', { class: 'placeholder', text: 'No agent files found in .opencode/agents/.' }));
+    fillFilter();
+    for (const row of state.rows) { fillModelSelect(row); updateRow(row); }
+    updatePairWarning();
+    updateFooter();
+  }
+
+  function renderGlobals() {
+    const g = state.global;
+    const el = $('globals');
+    if (!g) { el.hidden = true; return; }
+    const item = (label, value) => h('span', { class: 'item' }, label + ' ', h('strong', { class: value ? 'mono' : '', text: value || 'not set' }));
+    el.replaceChildren(
+      'opencode.json (read-only): ',
+      item('default agent', g.default_agent), ' · ',
+      item('model', g.model), ' · ',
+      item('small model', g.small_model)
+    );
+    el.hidden = false;
+  }
+
+  function buildCard(row) {
+    const a = row.agent;
+    const id = `agent-${row.index}`;
+    const dot = h('span', { class: 'dot', 'aria-hidden': 'true' });
+    if (/^#[0-9a-f]{3,8}$/i.test(a.color || '')) dot.style.setProperty('--dot', a.color);
+
+    const modelSelect = h('select', { id: `${id}-model`, 'aria-describedby': `${id}-model-hints` });
+    const customInput = h('input', {
+      type: 'text', class: 'custom-input', hidden: true, spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off',
+      placeholder: 'provider/model', 'aria-label': `Custom model for ${a.name}`, 'aria-describedby': `${id}-model-hints`,
+    });
+    const notListed = h('p', { class: 'hint warn', hidden: true });
+    const modelError = h('p', { class: 'hint error', hidden: true });
+    const modelWas = h('p', { class: 'hint was', hidden: true });
+
+    const effortSelect = h('select', { id: `${id}-effort`, 'aria-describedby': `${id}-effort-hints` },
+      h('option', { value: '', text: 'Default (unset)' }),
+      VARIANTS.map((v) => h('option', { value: v, text: v })));
+    if (row.orig.variant && !VARIANTS.includes(row.orig.variant)) {
+      effortSelect.append(h('option', { value: row.orig.variant, text: `${row.orig.variant} (unknown)` }));
+    }
+    effortSelect.value = row.cur.variant;
+    const effortWas = h('p', { class: 'hint was', hidden: true });
+
+    const modified = h('span', { class: 'pill modified', hidden: true, text: 'Modified' });
+    const pairWarning = h('p', { class: 'row-warning', hidden: true, role: 'note' });
+    const rowError = h('p', { class: 'row-error', hidden: true, role: 'alert' });
+
+    const card = h('article', { class: 'card', 'aria-labelledby': `${id}-name` },
+      h('div', { class: 'agent' },
+        h('div', { class: 'agent-head' },
+          dot,
+          h('h3', { class: 'agent-name', id: `${id}-name`, title: a.file, text: a.name }),
+          h('span', { class: 'pill mode', 'data-mode': a.mode, text: MODE_LABEL[a.mode] || a.mode }),
+          modified),
+        a.description ? h('p', { class: 'desc', title: a.description, text: shortDescription(a.description) }) : null),
+      h('div', { class: 'field' },
+        h('label', { for: `${id}-model`, text: 'Model' }),
+        modelSelect, customInput,
+        h('div', { id: `${id}-model-hints` }, notListed, modelError, modelWas)),
+      h('div', { class: 'field' },
+        h('label', { for: `${id}-effort`, text: 'Effort' }),
+        effortSelect,
+        h('div', { id: `${id}-effort-hints` }, effortWas)),
+      pairWarning,
+      rowError);
+
+    if (a.error) {
+      modelSelect.disabled = true;
+      effortSelect.disabled = true;
+      rowError.textContent = `Can't edit ${a.file}: ${a.error}`;
+      rowError.hidden = false;
+    }
+
+    modelSelect.addEventListener('change', () => {
+      if (modelSelect.value === CUSTOM) {
+        row.custom = true;
+        customInput.hidden = false;
+        customInput.value = row.cur.model;
+        customInput.focus();
+        customInput.select();
+      } else {
+        row.custom = false;
+        customInput.hidden = true;
+        row.cur.model = modelSelect.value;
+      }
+      changed(row);
+    });
+    customInput.addEventListener('input', () => {
+      row.cur.model = customInput.value.trim();
+      changed(row);
+    });
+    effortSelect.addEventListener('change', () => {
+      row.cur.variant = effortSelect.value;
+      changed(row);
+    });
+
+    row.el = { card, modelSelect, customInput, notListed, modelError, modelWas, effortSelect, effortWas, modified, pairWarning, rowError };
+  }
+
+  function usedProviders() {
+    return [...new Set(state.rows.map((r) => providerOf(r.orig.model)).filter(Boolean))];
+  }
+
+  function visibleProviders() {
+    const all = Object.keys(state.models.providers);
+    if (state.filter === FILTER_ALL) return all;
+    if (state.filter === FILTER_USED) {
+      const used = usedProviders();
+      const shown = all.filter((p) => used.includes(p));
+      return shown.length ? shown : all;
+    }
+    return all.includes(state.filter) ? [state.filter] : all;
+  }
+
+  function fillFilter() {
+    const select = $('provider-filter');
+    const all = Object.keys(state.models.providers);
+    const used = usedProviders().filter((p) => all.includes(p));
+    select.replaceChildren();
+    if (used.length) select.append(h('option', { value: FILTER_USED, text: `In use (${used.join(', ')})` }));
+    select.append(h('option', { value: FILTER_ALL, text: `All providers${all.length ? ` (${all.length})` : ''}` }));
+    for (const p of all) select.append(h('option', { value: p, text: p }));
+    // The model list and the agents load in parallel, so decide the default each time rather than once.
+    const wanted = state.filterChoice || FILTER_USED;
+    state.filter = [...select.options].some((o) => o.value === wanted) ? wanted : used.length ? FILTER_USED : FILTER_ALL;
+    select.value = state.filter;
+    select.disabled = all.length === 0;
+  }
+
+  function fillModelSelect(row) {
+    const select = row.el.modelSelect;
+    const providers = state.models.providers;
+    const groups = new Map(visibleProviders().map((p) => [p, [...providers[p]]]));
+    const unlisted = [];
+    // Always offer the saved value and the current choice, even when the filter hides their provider.
+    for (const value of [row.custom ? '' : row.cur.model, row.orig.model]) {
+      if (!value) continue;
+      if (state.allModels.has(value)) {
+        const p = providerOf(value);
+        if (!groups.has(p)) groups.set(p, [value]);
+        else if (!groups.get(p).includes(value)) groups.get(p).push(value);
+      } else if (!unlisted.includes(value)) unlisted.push(value);
+    }
+    select.replaceChildren();
+    if (!row.orig.model) select.append(h('option', { value: '', text: 'Not set (opencode default)' }));
+    if (unlisted.length) {
+      const label = hasList() ? 'Not in provider list' : 'Current';
+      select.append(h('optgroup', { label }, unlisted.map((v) => h('option', { value: v, text: hasList() ? `${v} (not in provider list)` : v }))));
+    }
+    for (const [p, ids] of groups) {
+      select.append(h('optgroup', { label: p }, ids.map((id) => h('option', { value: id, text: id.slice(p.length + 1) }))));
+    }
+    select.append(h('option', { value: CUSTOM, text: 'Custom…' }));
+    select.value = row.custom ? CUSTOM : row.cur.model;
+  }
+
+  function updateRow(row) {
+    const el = row.el;
+    const modified = isModified(row);
+    el.card.classList.toggle('is-modified', modified);
+    el.modified.hidden = !modified;
+
+    const invalid = isInvalid(row);
+    el.customInput.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+    el.modelError.hidden = !invalid;
+    if (invalid) {
+      el.modelError.textContent = row.cur.model
+        ? 'Use the form provider/model, for example anthropic/claude-opus-5-5.'
+        : 'Type a model as provider/model.';
+    }
+
+    const unlisted = hasList() && !invalid && row.cur.model && !state.allModels.has(row.cur.model);
+    el.notListed.hidden = !unlisted;
+    if (unlisted) {
+      el.notListed.textContent = row.custom
+        ? 'Not in provider list. Check the spelling; opencode will fail to start this agent if the model does not exist.'
+        : 'Not in provider list. Check the name, or use Refresh model list.';
+    }
+
+    const modelChanged = row.cur.model !== row.orig.model;
+    el.modelWas.hidden = !modelChanged;
+    if (modelChanged) el.modelWas.replaceChildren('Was ', h('span', { class: 'mono', text: row.orig.model || 'not set' }));
+    const effortChanged = row.cur.variant !== row.orig.variant;
+    el.effortWas.hidden = !effortChanged;
+    if (effortChanged) el.effortWas.textContent = `Was ${row.orig.variant || 'default'}`;
+
+    if (!row.agent.error) {
+      el.rowError.hidden = !row.serverError;
+      el.rowError.textContent = row.serverError;
+    }
+  }
+
+  function updatePairWarning() {
+    const [writer, reviewer] = PAIR.map((name) => state.rows.find((r) => r.agent.name === name));
+    const same = writer && reviewer && writer.cur.model && writer.cur.model === reviewer.cur.model;
+    for (const [row, other] of [[writer, reviewer], [reviewer, writer]]) {
+      if (!row) continue;
+      row.el.pairWarning.hidden = !same;
+      if (same) {
+        row.el.pairWarning.textContent =
+          `${other.agent.name} uses the same model. The workflow expects test-reviewer to use a different model from test-writer, so the tests get an independent check.`;
+      }
+    }
+  }
+
+  function dirtyRows() {
+    return state.rows.filter(isModified);
+  }
+
+  function updateFooter() {
+    const n = dirtyRows().length;
+    const count = $('dirty-count');
+    count.dataset.count = String(n);
+    count.textContent = n === 0 ? 'No unsaved changes' : `${n} unsaved change${n === 1 ? '' : 's'}`;
+    const invalid = state.rows.some(isInvalid);
+    $('revert-btn').disabled = n === 0 || state.saving;
+    const save = $('save-btn');
+    save.disabled = n === 0 || invalid || state.saving || state.offline;
+    save.textContent = state.saving ? 'Saving…' : 'Save changes';
+  }
+
+  function changed(row) {
+    row.serverError = '';
+    $('save-error').textContent = '';
+    updateRow(row);
+    updatePairWarning();
+    updateFooter();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Notices
+  // ---------------------------------------------------------------------------
+
+  function setNotice(key, kind, content, { dismissible = false } = {}) {
+    const box = $('notices');
+    const old = box.querySelector(`[data-key="${key}"]`);
+    if (!content) { if (old) old.remove(); return; }
+    const node = h('div', { class: `notice ${kind}`, 'data-key': key, role: kind === 'error' ? 'alert' : 'status' },
+      h('p', null, content),
+      dismissible ? h('button', { type: 'button', class: 'dismiss', 'aria-label': 'Dismiss', text: '×', onclick: () => node.remove() }) : null);
+    if (old) old.replaceWith(node); else box.append(node);
+  }
+
+  function showSaved(saved) {
+    const names = saved && saved.length ? ` (${saved.join(', ')})` : '';
+    setNotice('saved', 'ok', [
+      h('strong', { text: 'Saved to .opencode/agents/.' }),
+      ` opencode reads agents at startup — quit opencode and run `,
+      h('code', { text: 'opencode --continue' }),
+      ` to resume your session with the new settings.`,
+      names ? h('span', { class: 'sr-only', text: ` Updated${names}.` }) : null,
+    ], { dismissible: true });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Model list
+  // ---------------------------------------------------------------------------
+
+  function renderSource() {
+    const badge = $('source-badge');
+    const loading = state.refreshing || state.models.source === 'loading';
+    badge.dataset.state = loading ? 'loading' : state.models.source;
+    badge.querySelector('.spinner').hidden = !loading;
+    $('source-text').textContent = loading ? 'Loading models…' : `Models from: ${SOURCE_LABEL[state.models.source] || state.models.source}`;
+    badge.title = state.models.error || (state.models.fetchedAt ? `Fetched ${new Date(state.models.fetchedAt).toLocaleString()}` : '');
+
+    const btn = $('refresh-btn');
+    btn.disabled = loading;
+    btn.querySelector('.spinner').hidden = !state.refreshing;
+    btn.querySelector('.label').textContent = state.refreshing ? 'Refreshing…' : 'Refresh model list';
+
+    if (loading) return;
+    if (state.models.source === 'none') {
+      setNotice('models', 'warn', [
+        `Couldn't load the model list: ${state.models.error || 'unknown error'}. You can still type a model: choose `,
+        h('strong', { text: 'Custom…' }), ' in its Model list.',
+      ]);
+    } else if (state.models.source === 'anthropic-api') {
+      setNotice('models', 'warn', `The list comes from the Anthropic API because opencode's own list wasn't available${state.models.note ? ` (${state.models.note})` : ''}.`);
+    } else setNotice('models', null, null);
+  }
+
+  async function loadModels(refresh) {
+    state.refreshing = Boolean(refresh);
+    if (!refresh) state.models = { source: 'loading', providers: {} };
+    renderSource();
+    let models;
+    try {
+      models = await api(`/api/models${refresh ? '?refresh=1' : ''}`);
+    } catch (err) {
+      models = { source: 'none', providers: {}, error: err.message };
+    }
+    state.models = models;
+    state.allModels = new Set(Object.values(models.providers || {}).flat());
+    state.refreshing = false;
+    renderSource();
+    fillFilter();
+    for (const row of state.rows) { fillModelSelect(row); updateRow(row); }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+
+  function revert() {
+    for (const row of state.rows) {
+      row.cur = { ...row.orig };
+      row.custom = false;
+      row.serverError = '';
+      row.el.customInput.hidden = true;
+      row.el.effortSelect.value = row.cur.variant;
+      fillModelSelect(row);
+      updateRow(row);
+    }
+    $('save-error').textContent = '';
+    updatePairWarning();
+    updateFooter();
+  }
+
+  async function save() {
+    const changes = dirtyRows().map((row) => {
+      const change = { name: row.agent.name };
+      if (row.cur.model !== row.orig.model) change.model = row.cur.model;
+      if (row.cur.variant !== row.orig.variant) change.variant = row.cur.variant;
+      return change;
+    });
+    if (!changes.length) return;
+    state.saving = true;
+    $('save-error').textContent = '';
+    updateFooter();
+    try {
+      const result = await postJson('/api/agents', { changes });
+      setAgents(result);
+      showSaved(result.saved);
+    } catch (err) {
+      const errors = (err.body && err.body.errors) || [];
+      for (const e of errors) {
+        const row = state.rows.find((r) => r.agent.name === e.name);
+        if (row) { row.serverError = e.message; updateRow(row); }
+      }
+      $('save-error').textContent = `Nothing was saved. ${err.message}`;
+    } finally {
+      state.saving = false;
+      updateFooter();
+    }
+  }
+
+  async function stopEditor() {
+    const n = dirtyRows().length;
+    if (n && !window.confirm(`You have ${n} unsaved change${n === 1 ? '' : 's'}. Stop the editor anyway?`)) return;
+    try { await postJson('/api/shutdown', {}); } catch {}
+    state.stopped = true;
+    clearInterval(heartbeat);
+    document.body.replaceChildren(h('main', { class: 'stopped' },
+      h('div', { class: 'stopped-card' },
+        h('h1', { text: 'The editor has stopped' }),
+        h('p', null, 'You can close this tab. Run ', h('code', { text: '/config' }), ' in opencode to open it again.'))));
+  }
+
+  function setOffline(offline) {
+    if (state.offline === offline) return;
+    state.offline = offline;
+    setNotice('offline', 'error', offline
+      ? [`Lost contact with the editor server. It stops by itself after ${state.idleMinutes} minutes without activity. Run `, h('code', { text: '/config' }), ' in opencode again, then reload this page.']
+      : null);
+    updateFooter();
+  }
+
+  async function ping() {
+    try {
+      const health = await api('/api/health');
+      if (health && health.idleMinutes) state.idleMinutes = health.idleMinutes;
+      setOffline(false);
+    } catch {
+      setOffline(true);
+    }
+  }
+  const heartbeat = setInterval(ping, HEARTBEAT_MS);
+
+  $('provider-filter').addEventListener('change', (e) => {
+    state.filter = state.filterChoice = e.target.value;
+    for (const row of state.rows) fillModelSelect(row);
+  });
+  $('refresh-btn').addEventListener('click', () => loadModels(true));
+  $('stop-btn').addEventListener('click', stopEditor);
+  $('revert-btn').addEventListener('click', revert);
+  $('save-btn').addEventListener('click', save);
+  window.addEventListener('beforeunload', (e) => {
+    if (!state.stopped && dirtyRows().length) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Start
+  // ---------------------------------------------------------------------------
+
+  (async () => {
+    const models = loadModels(false);
+    try {
+      setAgents(await api('/api/agents'));
+    } catch (err) {
+      $('list-primary').replaceChildren(h('div', { class: 'placeholder', text: `Couldn't read the agent files: ${err.message}` }));
+      $('sub-section').hidden = true;
+    }
+    await models;
+    ping();
+  })();
+})();
+</script>
+</body>
+</html>

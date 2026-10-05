@@ -1,0 +1,95 @@
+name: vsa-tdd-bugfix
+version: 1
+description: Bug fix, test-first - investigation → the scenario that would have caught it → test plan → tasks. The regression test must fail because of the bug before anything is fixed. Two checkpoints.
+artifacts:
+  - id: investigation
+    generates: investigation.md
+    description: The debugger's reproduction, evidence, classification, root cause and proposed fix
+    template: investigation.md
+    instruction: |
+      Written by the debugger agent after reproducing the bug on a local copy of the app.
+      Keep every heading. "In plain English" is read by a human who may not be a developer.
+
+      Classification - exactly one, decided by comparing what happened with the current
+      spec (`openspec show "<capability>" --type spec`):
+      - spec-broken: a scenario or requirement says what should happen and the code does
+        something else.
+      - spec-silent: the spec does not cover this case and the right behaviour is obvious.
+      - as-specified: the code does what the spec says; the human expected something else.
+        This is a change request, not a bug.
+      - technical: not about behaviour at the API boundary - performance, configuration,
+        infrastructure, a flaky test, a vulnerable package.
+      - not-reproduced: say exactly what was tried and what information would help.
+
+      "Missing scenario" is the GIVEN/WHEN/THEN that would have caught the bug, written so
+      it can be pasted into a spec delta. "None" for technical bugs.
+      Never include secrets, passwords or personal data in any section.
+    requires: []
+
+  - id: specs
+    generates: "specs/**/*.md"
+    description: The scenario that would have caught the bug, as a spec delta
+    template: spec.md
+    instruction: |
+      Turn the investigation's "Missing scenario" into a spec delta at
+      `specs/<capability-path>/spec.md`, using the existing capability path.
+
+      - spec-broken, where an existing scenario should have caught it: MODIFIED requirement.
+        Copy the ENTIRE requirement block from `openspec/specs/<capability-path>/spec.md`,
+        keep every existing scenario name, and strengthen or add the scenario.
+      - spec-silent: MODIFIED requirement with the new scenario added to the copied block,
+        or an ADDED requirement if the behaviour is a use case of its own.
+      - technical: no spec delta. Set `skip_specs: true` in the change's `.openspec.yaml`
+        instead.
+
+      Scenario rules are the same as for features: GIVEN/WHEN/THEN bullets, a unique plain
+      name with no quotes, colons or slashes, and every THEN observable from outside the
+      application. Use `#### Scenario:` (four hashes).
+    requires:
+      - investigation
+
+  - id: test-plan
+    generates: test-plan.md
+    description: The regression test (or, for technical bugs, how the fix is proven)
+    template: test-plan.md
+    instruction: |
+      One entry per ADDED or MODIFIED scenario, in exactly the feature format
+      (`### <capability-path>: <scenario name>` with Slice, Test, Given, When, Then, Real vs
+      substituted, Expected red reason). Scenarios copied unchanged into a MODIFIED block
+      get the single line `- **Unchanged**: keep the existing test`.
+
+      The Expected red reason of the regression test MUST be the bug itself, taken from the
+      investigation's root cause (for example "returns 500 because the cancellation check
+      reads the first item only"). A test that would fail for any other reason - a missing
+      endpoint, a compile error - does not prove the bug.
+
+      Technical bugs: no entries. Instead write "## How the fix is proven" - a unit test, a
+      strengthened existing test, a measurement, or a clean `scripts/verify.sh` run - and why
+      that is enough.
+
+      End with "## Tests to remove" ("None" in almost every bug fix).
+    requires:
+      - specs
+
+  - id: tasks
+    generates: tasks.md
+    description: The fix, as a short checklist
+    template: tasks.md
+    instruction: |
+      Usually one group, `## 1. Fix: <Area/Slice or component>`, with checkbox tasks that say
+      how each is verified (the regression test by scenario name, or the proof from the test
+      plan), then `## 2. Verification` with `- [ ] 2.1 scripts/verify.sh <change> passes`.
+      Infrastructure fixes (AppHost, configuration) are tagged `[platform]` - the platform
+      agent does them. Package updates are tagged `[package]` - senior-dev adds them after the
+      human approves. Only `x` inside the box counts as done.
+    requires:
+      - test-plan
+
+apply:
+  requires: [tasks]
+  tracks: tasks.md
+  instruction: |
+    The developer fixes the root cause described in investigation.md, only after the human
+    approved and locked the regression test (`scripts/check-test-lock.sh` must pass). Fix the
+    cause, not the symptom; never special-case the test's data. The senior-dev agent verifies
+    and ticks the tasks.

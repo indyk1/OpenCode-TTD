@@ -1,0 +1,45 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "senior-dev",
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx", "-y", "@playwright/mcp@latest",
+        "--headless",
+        "--isolated",
+        "--allowed-origins", "http://localhost:*;https://localhost:*",
+        "--secrets", ".workflow/debugger.env"
+      ],
+      "enabled": true
+    },
+    "aspire": {
+      "type": "local",
+      "command": ["aspire", "agent", "mcp", "--non-interactive", "--nologo"],
+      "enabled": true
+    }
+  },
+  "permission": {
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow"
+    },
+    "edit": {
+      ".workflow/*": "deny"
+    },
+    "bash": {
+      "*lock-tests.sh*": "ask",
+      "*finish-change.sh*": "ask",
+      "openspec archive*": "ask",
+      "aspire deploy*": "ask",
+      "aspire destroy*": "ask"
+    },
+    "skill": {
+      "openspec-*": "deny"
+    },
+    "playwright_*": "deny",
+    "aspire_*": "deny"
+  }
+}

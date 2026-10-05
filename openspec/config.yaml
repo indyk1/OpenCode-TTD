@@ -1,0 +1,19 @@
+schema: vsa-tdd
+
+# Constraints an agent cannot infer from the code. Architecture and testing rules live in AGENTS.md.
+context: |
+  .NET / ASP.NET Core minimal APIs, built only as vertical slices.
+  Acceptance tests run over HTTP (NUnit + NSubstitute); one acceptance test per scenario.
+  No paid or commercially licensed NuGet packages.
+
+# Add your own per-artifact rules here (keys are artifact ids from schemas/vsa-tdd/schema.yaml).
+rules:
+  specs:
+    - Scenario names become test identifiers - plain words, no quotes, colons or slashes.
+  test-plan:
+    - Use literal values everywhere; never "some valid data".
+
+operations:
+  archive:
+    guidance:
+      - Archive only after the human accepted the change at checkpoint 3.

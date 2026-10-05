@@ -1,0 +1,248 @@
+name: vsa-tdd
+version: 1
+description: Vertical slices, test-first - proposal → specs → design (slices, contracts, shared knowledge) → test plan → tasks. Acceptance tests are written and approved by a human before implementation starts.
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: Why the change is needed, what changes, and which capabilities it touches
+    template: proposal.md
+    instruction: |
+      Create the proposal that establishes WHY this change is needed.
+
+      Sections:
+      - **Why**: 1-2 sentences on the problem or opportunity.
+      - **What Changes**: bullet list of user-visible changes. Think in use cases at the
+        API boundary - each one becomes a requirement and a vertical slice later. Mark
+        breaking changes with **BREAKING**.
+      - **Capabilities**: which specs will be created or modified.
+        - **New Capabilities**: each becomes `specs/<capability-path>/spec.md`. Name it for
+          a durable system behaviour (e.g. `ordering`), not for this piece of work. Use
+          kebab-case path segments and follow the existing spec organisation.
+        - **Modified Capabilities**: existing capabilities whose REQUIREMENTS change. Use the
+          exact existing path under `openspec/specs/`. Run `openspec list --specs` first and
+          read related specs with `openspec show "<spec-id>" --type spec`.
+      - **Impact**: affected slices, shared code, APIs and dependencies.
+      - **Assumptions**: small details you decided without asking, so the human can see them.
+
+      Every change declares at least one capability unless `.openspec.yaml` sets
+      `skip_specs: true` (pure refactor/tooling - no behaviour change, so no new tests).
+
+      Keep it short (under a page). Implementation details belong in design.md.
+    requires: []
+
+  - id: specs
+    generates: "specs/**/*.md"
+    description: Behaviour deltas - one requirement per vertical slice; every scenario becomes one acceptance test
+    template: spec.md
+    instruction: |
+      Create one spec delta per capability listed in the proposal, at
+      `specs/<capability-path>/spec.md` (exact existing path for modified capabilities).
+
+      A spec is a behaviour contract at the API boundary - no class names, libraries or
+      implementation steps.
+
+      Vertical-slice and test-first rules:
+      - One requirement = one use case at the API boundary (a single command or query) =
+        one vertical slice. If a requirement needs two endpoints, split it.
+      - Scenarios use GIVEN / WHEN / THEN / AND bullets. Each scenario becomes exactly one
+        acceptance test identified as "<capability-path>: <scenario name>".
+      - Scenario names: unique within the capability, plain words, at most ~8 words, and no
+        quotes, colons or slashes. The name is the test's identity - never rename casually.
+      - Every THEN must be observable from outside the application: an HTTP status, the
+        response body, state visible through another endpoint, or a call to an
+        out-of-process dependency (email, payment provider, external API).
+      - Give rejection paths (validation failure, not found, conflict, not allowed) their
+        own scenarios.
+      - A MODIFIED requirement must keep every existing scenario name (you may change the
+        scenario text). To retire a scenario, REMOVE the requirement and ADD a replacement;
+        list the retired scenarios under "Tests to remove" in the test plan.
+
+      OpenSpec delta format:
+      - `## ADDED Requirements`, `## MODIFIED Requirements` (copy the ENTIRE existing block
+        from `openspec/specs/<capability-path>/spec.md`, then edit it), `## REMOVED
+        Requirements` (with **Reason** and **Migration**), `## RENAMED Requirements`
+        (FROM:/TO:).
+      - Each requirement: `### Requirement: <name>` then a description using SHALL/MUST
+        (one behaviour, at most 500 characters).
+      - Each scenario: `#### Scenario: <name>` - exactly four hashes - followed by bullets.
+      - Every requirement has at least one scenario.
+      - New capabilities only: start with `## Purpose` (one or two sentences, 50+
+        characters). Never add Purpose to a delta for an existing capability.
+    requires:
+      - proposal
+
+  - id: design
+    generates: design.md
+    description: Slice map, contracts, shared business knowledge decisions and technical decisions
+    template: design.md
+    instruction: |
+      Create design.md: HOW the change is built as vertical slices. This document is always
+      required and other agents rely on its headings - keep them exactly.
+
+      ## Context
+      Current state that matters (existing slices, shared code, constraints). Reference
+      proposal.md for motivation instead of restating it.
+
+      ## Slice Map
+      A table, one row per requirement:
+      | Requirement | Capability | Slice (Area/Slice) | Endpoint | New / Modified / Removed |
+      A slice lives in `src/<App>/Features/<Area>/<Slice>/`, namespace
+      `<App>.Features.<Area>.<Slice>`.
+
+      ## Contracts
+      One `### <Area>/<Slice>` subsection per new or modified slice, giving the exact public
+      shape the Test Writer will create in `<Slice>.Contracts.cs`:
+      - HTTP method and route (the `Route` constant, plus a `Path(...)` method when the
+        route has parameters)
+      - Request record(s): property names and C# types, or "none"
+      - Response record(s): property names and C# types
+      - Status code for each outcome; errors are RFC 7807 problem details
+      Contracts are records only - no logic.
+
+      ## Shared Business Knowledge
+      Default: business logic stays inside its slice. Duplication is cheaper than the wrong
+      abstraction. Before writing this section, run
+      `.opencode/skills/vertical-slices/scripts/overview.sh shared` (recorded decisions, the
+      Shared/Domain code and the slices that use it) and search the other slices for the
+      business rules this change needs.
+
+      You MUST raise a question for the human - never decide it yourself - when either
+      trigger applies:
+        (a) the change would modify existing code in `Shared/Domain/` (other slices depend on
+            it), or
+        (b) a business rule this change needs already exists in another slice, or appears
+            in more than one slice of this change, and you want to extract it.
+      If a recorded decision already covers the case, cite it (D-###) instead of asking.
+
+      For each candidate:
+        ### SK-<n>: <the rule in plain words>
+        - **Lives in / needed by**: <paths and slices>
+        - **Trigger**: (a) or (b)
+        - **Question**: do these places change together, for the same business reason?
+        - **Options**: keep separate in each slice / extract to `Shared/Domain/<Name>` /
+          reuse existing `<path>`
+        - **Recommendation**: <option> because <consequence>
+        - **Status**: pending, or decided (D-###)
+      If nothing triggers, write "No shared business knowledge affected."
+
+      Technical cross-cutting concerns (validation pipeline, persistence plumbing, time,
+      logging) are not business knowledge: decide them under Technical Decisions.
+
+      ## Platform
+      Every technology choice follows `openspec/decisions/platform.md` (run
+      `.opencode/skills/vertical-slices/scripts/overview.sh platform`). Check what this change
+      needs: storing data, sign-in, live updates on screen, access for other systems (API) or
+      AI assistants (MCP), sending email, file storage, background work, payments, anything
+      else outside the process.
+      - Covered by a decision that is already in place: say so, citing P-###.
+      - Covered by a decision that is not in place yet: write "Platform Work" - what the
+        platform agent adds to the AppHost, what the app wiring needs (Developer), and what
+        the acceptance test infrastructure needs (Test Writer), following the
+        vertical-slices skill's `references/platform.md`.
+      - Not covered: you MUST ask the human - never choose yourself. Write
+          ### PQ-<n>: <the capability in plain words>
+          - **Question**: <plain English, no jargon>
+          - **Options**: <2-4 options, each with one sentence on what it means for them>
+          - **Recommendation**: <option> because <reason>
+          - **Status**: pending, or decided (P-###)
+      If the change needs nothing new from the platform, write "No platform changes."
+
+      ## Technical Decisions
+      Key choices with rationale and alternatives, including any `Shared/Infrastructure/`
+      change. Never contradict a platform decision.
+
+      ## Dependencies
+      New NuGet packages: "None" by default. A proposal must name the package and its
+      licence (MIT, Apache-2.0 or BSD only) and explain why the .NET base library is not
+      enough. It needs the human's approval at checkpoint 1.
+
+      ## Risks / Trade-offs
+      [Risk] → Mitigation.
+
+      ## Open Questions
+      Only unknowns that cannot change the specs, slices, contracts or tasks. Anything that
+      could must be asked now. Omit the section if there are none.
+    requires:
+      - specs
+
+  - id: test-plan
+    generates: test-plan.md
+    description: The exact specification of every acceptance test, one entry per scenario
+    template: test-plan.md
+    instruction: |
+      Create test-plan.md: the exact specification of every acceptance test. The Test Writer
+      turns each entry into one NUnit test without making decisions of its own, so be
+      concrete - literal values, exact requests, every assertion.
+
+      One entry per scenario in the ADDED and MODIFIED requirements of this change, in spec
+      order, with this heading format exactly (`scripts/check-scenarios.sh` checks it):
+
+        ### <capability-path>: <scenario name>
+        - **Slice**: <Area>/<Slice>
+        - **Test**: <Slice>Tests.<Scenario_name_with_underscores>
+        - **Given**: the starting state with literal values - created through existing
+          endpoints where possible - and each substitute's configured return values
+        - **When**: the exact HTTP request - method, route, and the body as a contract
+          instance with literal values
+        - **Then**: numbered assertions, each observable from outside the application:
+          1. the status code (always first)
+          2. response body fields and their expected values
+          3. state confirmed through a follow-up request
+          4. substitutes that must or must not have been called, with arguments
+          5. live updates a connected client receives (for example a SignalR message)
+        - **Real vs substituted**: everything runs for real except out-of-process
+          dependencies; name each substitute and the interface it replaces
+        - **Expected red reason**: how the test fails before implementation (usually
+          "404 Not Found - endpoint not mapped yet"). If the expected outcome is itself a
+          status a missing endpoint could produce (such as 404), add a body assertion that
+          only the real implementation can satisfy.
+
+      A scenario copied unchanged into a MODIFIED requirement still gets its heading, with
+      the single line `- **Unchanged**: keep the existing test` instead of the fields.
+
+      End with:
+        ## Tests to remove
+        One line per scenario retired by a REMOVED requirement or dropped from a MODIFIED
+        requirement (`<capability-path>: <scenario name>`), or "None".
+
+      Rules: no implementation details (classes, tables, queries); never substitute
+      application code; deterministic data only (substitute the clock if time matters).
+    requires:
+      - specs
+      - design
+
+  - id: tasks
+    generates: tasks.md
+    description: The Developer's implementation checklist, grouped by slice
+    template: tasks.md
+    instruction: |
+      Create tasks.md: the Developer's implementation checklist. Acceptance tests are NOT
+      tasks here - the Test Writer writes them before implementation, and they are locked.
+
+      - One group per slice in the Slice Map, in implementation order:
+        `## <n>. <Area>/<Slice>`
+      - Each task is a checkbox `- [ ] <n>.<m> <description>` that states how it is
+        verified (which acceptance tests by scenario name, or which unit tests).
+      - A typical slice group: implement the endpoint and handler → unit-test the
+        non-trivial rules → all of the slice's acceptance tests pass.
+      - `Shared/Domain/` work appears only when design.md records an approved decision; tag
+        it `[shared-domain D-###]`.
+      - Platform Work from design.md comes first, as `## 1. Platform: <resource>`, with each
+        task tagged `[platform P-###]` - the platform agent does these, before the tests are
+        written. App wiring for the resource is the first task of the first slice group.
+      - Last group: `## <n>. Verification` with `- [ ] <n>.1 scripts/verify.sh <change> passes`.
+      - Only `x` inside the box counts as done. The senior-dev agent ticks tasks after it
+        has verified each slice.
+    requires:
+      - design
+      - test-plan
+
+apply:
+  requires: [tasks]
+  tracks: tasks.md
+  instruction: |
+    Implementation is done by the developer subagent, one slice (task group) per run, and only
+    after the human approved and locked the acceptance tests (`scripts/check-test-lock.sh`
+    must pass). Make the slice's locked acceptance tests pass using red-green-refactor with
+    unit tests; never edit acceptance tests or `*.Contracts.cs` files. The senior-dev agent
+    verifies each slice and ticks its tasks.

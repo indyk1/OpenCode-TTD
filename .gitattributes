@@ -1,0 +1,2 @@
+# Keep shell scripts runnable in WSL and Git Bash even when Git converts line endings on Windows.
+*.sh text eol=lf
