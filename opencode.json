@@ -17,6 +17,12 @@
       "type": "local",
       "command": ["aspire", "agent", "mcp", "--non-interactive", "--nologo"],
       "enabled": true
+    },
+    "roslynk": {
+      "type": "local",
+      "command": ["dnx", "Roslynk@2.0.0", "--yes", "--", "stdio"],
+      "enabled": true,
+      "timeout": 60000
     }
   },
   "permission": {
@@ -37,9 +43,11 @@
       "aspire destroy*": "ask"
     },
     "skill": {
-      "openspec-*": "deny"
+      "openspec-*": "deny",
+      "roslynk": "deny"
     },
     "playwright_*": "deny",
-    "aspire_*": "deny"
+    "aspire_*": "deny",
+    "roslynk_*": "deny"
   }
 }

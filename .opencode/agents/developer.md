@@ -44,6 +44,28 @@ permission:
     "* >> *": deny
     "*tee *": deny
     "*<<*": deny
+  "roslynk_open_solution": allow
+  "roslynk_get_solution_status": allow
+  "roslynk_reload_solution": allow
+  "roslynk_find_definition": allow
+  "roslynk_get_expression_info": allow
+  "roslynk_get_symbol": allow
+  "roslynk_get_symbol_body": allow
+  "roslynk_get_members": allow
+  "roslynk_search_symbols": allow
+  "roslynk_multi_query": allow
+  "roslynk_find_references": allow
+  "roslynk_find_reads": allow
+  "roslynk_find_writes": allow
+  "roslynk_get_callers": allow
+  "roslynk_find_implementations": allow
+  "roslynk_get_type_hierarchy": allow
+  "roslynk_get_diagnostics": allow
+  "roslynk_get_code_actions": allow
+  "roslynk_find_dead_code": allow
+  "roslynk_find_dead_conditionals": allow
+  skill:
+    "roslynk": allow
   task: deny
   question: deny
   webfetch: deny
