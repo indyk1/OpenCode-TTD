@@ -1,5 +1,8 @@
 // Shared helpers for the token usage tests (not a test file itself).
+import { spawn } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import http from 'node:http';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -89,3 +92,89 @@ export const FIXTURE = {
   fixLoginRedirect: { total: 339, runs: 2 },
   setup: { total: 56 },
 };
+
+/** Start server.mjs in the foreground on a random port and wait for its "running at" line. */
+export function startServer({ root, args = [] }) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [SERVER, '--root', root, '--port', '0', '--no-open', '--idle-minutes', '0', ...args], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let out = '';
+    let err = '';
+    const timer = setTimeout(() => reject(new Error(`server did not start: ${out}${err}`)), 5000);
+    child.stderr.on('data', (d) => (err += d));
+    child.stdout.on('data', (d) => {
+      out += d;
+      const m = /running at http:\/\/127\.0\.0\.1:(\d+)/.exec(out);
+      if (m) {
+        clearTimeout(timer);
+        const port = Number(m[1]);
+        resolve({ child, port, url: `http://127.0.0.1:${port}`, stop: () => stopChild(child) });
+      }
+    });
+    child.on('exit', (code) => reject(new Error(`server exited early (${code}): ${out}${err}`)));
+  });
+}
+
+export function waitForExit(child, ms = 5000) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve(child.exitCode);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('process did not exit')), ms);
+    child.once('exit', (code) => {
+      clearTimeout(timer);
+      resolve(code);
+    });
+  });
+}
+
+export async function stopChild(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  child.kill('SIGTERM');
+  await waitForExit(child).catch(() => child.kill('SIGKILL'));
+}
+
+/** Raw HTTP request (fetch cannot set Host). Returns { status, headers, text, json }. */
+export function request(port, { method = 'GET', path: urlPath = '/', headers = {}, body } = {}) {
+  return new Promise((resolve, reject) => {
+    const data = body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body);
+    const req = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        method,
+        path: urlPath,
+        headers: {
+          Host: `127.0.0.1:${port}`,
+          ...(data !== undefined ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {}),
+          ...headers,
+        },
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8');
+          let json;
+          try {
+            json = JSON.parse(text);
+          } catch {}
+          resolve({ status: res.statusCode, headers: res.headers, text, json });
+        });
+      },
+    );
+    req.on('error', reject);
+    if (data !== undefined) req.write(data);
+    req.end();
+  });
+}
+
+export function freePort() {
+  return new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.once('error', reject);
+    s.listen(0, '127.0.0.1', () => {
+      const { port } = s.address();
+      s.close(() => resolve(port));
+    });
+  });
+}
