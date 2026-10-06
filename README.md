@@ -106,7 +106,7 @@ Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`
 ## Token usage
 Every model reply's tokens are recorded, so you can see what each feature and bug used, per agent. Type `/costings` in opencode to open the page in your browser; it also downloads the numbers as CSV (see `.opencode/costings/README.md`).
 - **How it is recorded.** An opencode plugin (`.opencode/plugins/usage-recorder.js`) writes one row per model reply into `.workflow/usage.db`, a SQLite file, tagged with the change and the agent. `scripts/finish-change.sh` marks the change finished. Nothing is installed: opencode and Node.js both include SQLite.
-- **opencode 1 only, for now.** opencode 2 loads the plugin, but it replaced the hooks the plugin records from, so nothing is recorded there yet.
+- **opencode 1 and opencode 2.** Recording works on both.
 - **Per machine.** The file is git-ignored and stays on the computer that ran opencode (inside WSL on Windows). Each git worktree has its own.
 - **Tokens, not money.** The page shows input, output, reasoning, cache read and cache write tokens. The CSVs also carry opencode's cost estimate, which comes from a public price list and may be $0 with a subscription login.
 - **Never in the way.** If recording fails, the work carries on; only those numbers are missing.

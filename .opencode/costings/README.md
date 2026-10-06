@@ -23,7 +23,8 @@ The page listens on `http://127.0.0.1:4330` (or the next free port). Running `/c
 - A reply belongs to the change its session is working on. `/feature` and `/bug` get their change name when the senior-dev runs `openspec new change`; `/resume <name>` names it straight away. The first planning replies, before the name is known, are added to the change once it is named. Subagents belong to the change of the session that launched them.
 - Any other command (`/setup`, `/deploy`, `/config`) starts work outside a change, shown under "Other".
 - `scripts/finish-change.sh` marks a change finished (date, feature or bug, summary) after archiving it. A change that never finishes - a bug that turned out to work as agreed - stays "open", with its tokens counted.
-- The plugin records through opencode 1's hooks (`event`, `command.execute.before`, `tool.execute.after`). opencode 2 loads it - its default export also has the `{ id, setup }` shape opencode 2 requires - but opencode 2 replaced those hooks with different events, and the recorder does not use them yet, so nothing is recorded there.
+- Recording works on opencode 1 and opencode 2. opencode 1 records through the hooks `event`, `command.execute.before` and `tool.execute.after`; opencode 2 (which requires the plugin's default export to have the `{ id, setup }` shape) records from its event stream and tool hook, translated for the same recorder by `.opencode/costings/opencode2.mjs`.
+- opencode 2 does not say which slash command you typed, so the plugin recognises a command by matching your message against the templates in `.opencode/commands/*.md`. A message that matches no template is ordinary conversation.
 - Recording never blocks the workflow. If the database cannot be written, opencode's log gets a warning and that reply is skipped; if `finish-change.sh` cannot mark the change, it prints a warning and saves the work anyway.
 
 ## CSV
