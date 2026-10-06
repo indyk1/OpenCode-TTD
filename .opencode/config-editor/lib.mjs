@@ -1,7 +1,7 @@
-// Helpers for the opencode config editor: frontmatter parsing and rewriting,
-// validation, `opencode models` output parsing, browser-launch commands and the
-// agent-file I/O used by server.mjs. Node 20+ built-ins only (no package.json may
-// live under .opencode/, because opencode bun-installs .opencode/package.json).
+// Helpers for the opencode config editor: frontmatter parsing and rewriting, validation, `opencode models`
+// output parsing and the agent-file I/O used by server.mjs. The browser-launch commands live in
+// ../lib/local-web.mjs (shared with the token usage page) and are re-exported here. Node 20+ built-ins only
+// (no package.json may live under .opencode/, because opencode bun-installs .opencode/package.json).
 
 import { readFile, readdir, writeFile, rename, unlink, stat } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
@@ -257,34 +257,10 @@ export function countModels(providers) {
 }
 
 // ---------------------------------------------------------------------------
-// Browser launch commands
+// Browser launch commands (shared with the token usage page)
 // ---------------------------------------------------------------------------
 
-export function isWsl({ platform = process.platform, env = process.env, procVersion = '' } = {}) {
-  return platform === 'linux' && (Boolean(env.WSL_DISTRO_NAME) || /microsoft/i.test(procVersion));
-}
-
-/**
- * The commands to try, in order, to open `url` in the user's browser.
- * Each is { cmd, args, options, anyExit } where anyExit means "a non-zero exit still counts as success"
- * (explorer.exe returns 1 even when it opened the page).
- */
-export function browserCommands(url, { platform = process.platform, env = process.env, procVersion = '', hasMntC = true } = {}) {
-  if (platform === 'win32') {
-    // `start` treats the first quoted argument as a window title, hence the empty "".
-    return [{ cmd: 'cmd', args: ['/c', 'start', '""', url], options: { windowsVerbatimArguments: true } }];
-  }
-  if (platform === 'darwin') return [{ cmd: 'open', args: [url] }];
-  if (isWsl({ platform, env, procVersion })) {
-    return [
-      { cmd: 'wslview', args: [url] },
-      // Running cmd.exe from a Linux directory prints a "UNC paths are not supported" warning; /mnt/c avoids it.
-      { cmd: 'cmd.exe', args: ['/c', 'start', '', url], options: hasMntC ? { cwd: '/mnt/c' } : {} },
-      { cmd: 'explorer.exe', args: [url], anyExit: true },
-    ];
-  }
-  return [{ cmd: 'xdg-open', args: [url] }];
-}
+export { isWsl, browserCommands } from '../lib/local-web.mjs';
 
 // ---------------------------------------------------------------------------
 // Agent files and opencode.json
