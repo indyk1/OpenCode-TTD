@@ -1,2 +1,6 @@
 # The debugger's local test account - never commit it.
 debugger.env
+# Token usage for /costings - stays on this computer, never commit it.
+usage.db
+usage.db-wal
+usage.db-shm

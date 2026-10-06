@@ -2,7 +2,8 @@
 # Usage: scripts/finish-change.sh <change-name> "<one-line summary>"
 #
 # The human's signature on checkpoint 3. Archives the OpenSpec change (its spec
-# changes become the living specs) and saves all the work in git as one commit.
+# changes become the living specs), marks it finished in the token usage
+# database and saves all the work in git as one commit.
 # opencode asks for permission every time an agent runs it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -18,8 +19,20 @@ fi
 scripts/check-test-lock.sh > /dev/null ||
   die "the acceptance test lock does not match - run scripts/verify.sh $change first"
 
+# A bug uses the vsa-tdd-bugfix schema; a bug that moved to the feature track has vsa-tdd by now.
+usage_type=feature
+if grep -q '^schema:.*vsa-tdd-bugfix' "openspec/changes/$change/.openspec.yaml" 2>/dev/null; then
+  usage_type=bug
+fi
+
 echo "==> Archiving $change"
 openspec archive "$change" --yes
+
+# Token usage is a record, not a gate: if it cannot be written, finishing carries on.
+echo "==> Recording token usage"
+if ! node .opencode/costings/close-change.mjs "$change" "$usage_type" "$summary"; then
+  echo "warning: token usage for $change was not recorded" >&2
+fi
 
 if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   echo "==> Saving the work in git"
