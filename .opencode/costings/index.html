@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token usage</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --border: #e2e5ea;
+    --border-strong: #c8cdd6;
+    --text: #1c2230;
+    --muted: #5d6676;
+    --faint: #8790a0;
+    --accent: #2d5bd7;
+    --accent-soft: #eaf0fd;
+    --danger: #b42318;
+    --danger-bg: #fdeceb;
+    --danger-border: #f2b8b2;
+    --ok-bg: #eaf6ef;
+    --ok-border: #b3dcc3;
+    --ok-text: #155c37;
+    --focus: #2d5bd7;
+    --radius: 8px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111419;
+      --surface: #181c23;
+      --surface-2: #20252e;
+      --border: #2a303a;
+      --border-strong: #3b424e;
+      --text: #e5e8ee;
+      --muted: #a0a8b6;
+      --faint: #7b8494;
+      --accent: #7fa2ff;
+      --accent-soft: #1d2945;
+      --danger: #ff8e85;
+      --danger-bg: #351c1c;
+      --danger-border: #6e3330;
+      --ok-bg: #132a1e;
+      --ok-border: #2b5d42;
+      --ok-text: #93dbb0;
+      --focus: #8fb0ff;
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  .top { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .top-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; padding-top: 20px; padding-bottom: 20px; }
+  h1 { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 650; letter-spacing: -0.01em; }
+  .root { margin: 4px 0 0; color: var(--muted); font: 13px/1.4 var(--mono); overflow-wrap: anywhere; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  button { font: inherit; color: inherit; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
+  .seg button { height: 34px; padding: 0 12px; border: 0; background: var(--surface); font-size: 14px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--border-strong); }
+  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .btn { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 550; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  .btn:hover, .seg button:hover { background: var(--surface-2); }
+
+  main { padding-top: 24px; padding-bottom: 48px; }
+  .banner { margin-bottom: 16px; padding: 12px 14px; border: 1px solid var(--danger-border); border-radius: var(--radius); background: var(--danger-bg); color: var(--danger); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .card { padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .card .label { color: var(--muted); font-size: 13px; }
+  .card .value { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
+  .dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: -1px; }
+  .rows { display: grid; gap: 8px; }
+  .row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 72px; gap: 16px; align-items: center; width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); text-align: left; cursor: pointer; }
+  .row:hover { border-color: var(--border-strong); }
+  .row[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .name { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { color: var(--muted); font-size: 12.5px; }
+  .pill { display: inline-block; margin-left: 6px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; }
+  .pill.finished { border-color: var(--ok-border); background: var(--ok-bg); color: var(--ok-text); }
+  .pill.open { border-color: var(--accent-soft); background: var(--accent-soft); color: var(--accent); }
+  .bar { display: flex; height: 12px; overflow: hidden; border-radius: 3px; background: var(--surface-2); }
+  .total { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { margin: 0; padding: 48px 16px; border: 1px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--muted); text-align: center; }
+  .detail { margin-top: 20px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .detail h2 { margin: 0; font-size: 17px; }
+  .detail .sub { margin: 2px 0 12px; color: var(--muted); font-size: 13px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  th:nth-child(-n + 2), td:nth-child(-n + 2) { text-align: left; }
+  thead th { color: var(--muted); font-size: 12.5px; font-weight: 550; }
+  tfoot th, tfoot td { border-bottom: 0; font-weight: 600; }
+  .foot { margin-top: 24px; color: var(--faint); font-size: 12.5px; }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .row { grid-template-columns: minmax(0, 1fr) 64px; }
+    .row .bar-cell { grid-column: 1 / -1; grid-row: 2; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <h1>Token usage</h1>
+      <p class="root" id="root"></p>
+    </div>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Show">
+        <button type="button" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-filter="feature" aria-pressed="false">Features</button>
+        <button type="button" data-filter="bug" aria-pressed="false">Bugs</button>
+        <button type="button" data-filter="other" aria-pressed="false">Other</button>
+      </div>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <a class="btn" id="csv-summary" href="/usage-by-agent.csv" download>Summary CSV</a>
+      <a class="btn" id="csv-replies" href="/usage-replies.csv" download>Replies CSV</a>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  <div class="banner" id="banner" role="alert" hidden></div>
+  <section class="cards" id="cards" aria-label="Totals"></section>
+  <div class="legend" id="legend"></div>
+  <div class="rows" id="rows"></div>
+  <p class="empty" id="empty" hidden></p>
+  <section class="detail" id="detail" aria-live="polite" hidden></section>
+  <p class="foot">Tokens as opencode reports them for each model reply. Total = input + output + reasoning + cache read + cache write. Cost estimates are in the CSV files only.</p>
+</main>
+<script>
+'use strict';
+const FALLBACK_COLORS = ['#64748B', '#A855F7', '#EC4899', '#14B8A6', '#84CC16', '#F97316'];
+const state = { data: null, filter: 'all', selected: null };
+const $ = (id) => document.getElementById(id);
+const nf = new Intl.NumberFormat('en-US');
+
+function el(tag, props = {}, children = []) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = value;
+    else if (key === 'style') Object.assign(node.style, value);
+    else if (key === 'onclick') node.addEventListener('click', value);
+    else node.setAttribute(key, value);
+  }
+  for (const child of [].concat(children)) if (child != null) node.append(child);
+  return node;
+}
+
+function compact(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return Math.round(n / 1e3) + 'k';
+  return String(n);
+}
+
+function day(iso) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+}
+
+function colorOf(agent) {
+  const known = state.data && state.data.agentColors[agent];
+  if (known) return known;
+  let hash = 0;
+  for (const ch of agent) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
+}
+
+/** Changes and Other groups as one list, newest activity first, for the current filter. */
+function groups() {
+  if (!state.data) return [];
+  const changes = state.data.changes.map((c) => Object.assign({ key: 'change:' + c.name, label: c.name }, c));
+  const other = state.data.other.map((o) => Object.assign({ key: 'other:' + (o.command || ''), status: null }, o));
+  const all = changes.concat(other).sort((a, b) => String(b.lastActivity || '').localeCompare(String(a.lastActivity || '')));
+  return state.filter === 'all' ? all : all.filter((g) => g.type === state.filter);
+}
+
+function render() {
+  for (const button of document.querySelectorAll('[data-filter]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.filter === state.filter));
+  }
+  const query = state.filter === 'all' ? '' : '?filter=' + state.filter;
+  $('csv-summary').href = '/usage-by-agent.csv' + query;
+  $('csv-replies').href = '/usage-replies.csv' + query;
+  const list = groups();
+  if (!list.some((g) => g.key === state.selected)) state.selected = list.length ? list[0].key : null;
+  renderCards(list);
+  renderLegend(list);
+  renderRows(list);
+  renderDetail(list.find((g) => g.key === state.selected));
+}
+
+function renderCards(list) {
+  const total = list.reduce((sum, g) => sum + g.totals.total, 0);
+  const debuggerTotal = list.reduce((sum, g) => sum + g.agents.filter((a) => a.agent === 'debugger').reduce((s, a) => s + a.total, 0), 0);
+  const changes = list.filter((g) => g.type !== 'other');
+  const card = (label, value, title) =>
+    el('div', { class: 'card', title: title || '' }, [el('div', { class: 'label', text: label }), el('div', { class: 'value', text: value })]);
+  $('cards').replaceChildren(
+    card('Total tokens', compact(total), nf.format(total) + ' tokens'),
+    card('Changes', String(changes.length)),
+    card('Finished', String(changes.filter((g) => g.status === 'finished').length)),
+    card('Debugger share', total ? Math.round((debuggerTotal / total) * 100) + '%' : '0%'),
+  );
+}
+
+function renderLegend(list) {
+  const agents = [...new Set(list.flatMap((g) => g.agents.map((a) => a.agent)))];
+  $('legend').replaceChildren(...agents.map((agent) => el('span', {}, [el('span', { class: 'dot', style: { background: colorOf(agent) } }), agent])));
+}
+
+function describe(g) {
+  if (g.type === 'other') return 'outside a change' + (g.lastActivity ? ' · ' + day(g.lastActivity) : '');
+  if (g.status === 'finished') return g.type + ' · finished ' + day(g.finishedAt);
+  return g.type + ' · last activity ' + day(g.lastActivity) + (g.phase ? ' · phase: ' + g.phase : '');
+}
+
+function renderRows(list) {
+  const max = Math.max(1, ...list.map((g) => g.totals.total));
+  $('rows').replaceChildren(...list.map((g) => {
+    const meta = el('div', { class: 'meta', text: describe(g) });
+    if (g.status) meta.append(el('span', { class: 'pill ' + g.status, text: g.status }));
+    const bar = el('div', { class: 'bar', style: { width: Math.max(4, (g.totals.total / max) * 100) + '%' } },
+      g.agents.map((a) => el('span', {
+        title: a.agent + ': ' + nf.format(a.total) + ' tokens',
+        style: { width: (g.totals.total ? (a.total / g.totals.total) * 100 : 0) + '%', background: colorOf(a.agent) },
+      })));
+    return el('button', {
+      type: 'button',
+      class: 'row',
+      'aria-current': String(g.key === state.selected),
+      onclick: () => {
+        state.selected = g.key;
+        render();
+      },
+    }, [
+      el('div', {}, [el('div', { class: 'name', text: g.label }), meta]),
+      el('div', { class: 'bar-cell' }, [bar]),
+      el('div', { class: 'total', text: compact(g.totals.total), title: nf.format(g.totals.total) + ' tokens' }),
+    ]);
+  }));
+  const empty = $('empty');
+  if (state.data && !state.data.recorded) {
+    empty.textContent = 'No token usage recorded yet. It is recorded from the next opencode session onwards.';
+    empty.hidden = false;
+  } else if (state.data && !list.length) {
+    empty.textContent = 'Nothing to show for this filter.';
+    empty.hidden = false;
+  } else empty.hidden = true;
+}
+
+function renderDetail(g) {
+  const detail = $('detail');
+  if (!g) {
+    detail.hidden = true;
+    return;
+  }
+  const sub = g.type === 'other' ? 'Work outside a change' : [g.type, g.status, g.summary].filter(Boolean).join(' · ');
+  const cells = (t) => [t.runs, t.input, t.output, t.reasoning, t.cacheRead, t.cacheWrite, t.total].map((n) => el('td', { text: nf.format(n) }));
+  const head = el('tr', {}, ['Agent', 'Model', 'Runs', 'Input', 'Output', 'Reasoning', 'Cache read', 'Cache write', 'Total']
+    .map((h) => el('th', { scope: 'col', text: h })));
+  const body = g.agents.map((a) => el('tr', {}, [
+    el('td', {}, [el('span', { class: 'dot', style: { background: colorOf(a.agent) } }), a.agent]),
+    el('td', { text: a.models.join(', ') }),
+    ...cells(a),
+  ]));
+  const foot = el('tr', {}, [el('th', { scope: 'row', text: 'Total' }), el('td'), ...cells(g.totals)]);
+  detail.replaceChildren(
+    el('h2', { text: g.label }),
+    el('p', { class: 'sub', text: sub }),
+    el('div', { class: 'table-wrap' }, [el('table', {}, [el('thead', {}, [head]), el('tbody', {}, body), el('tfoot', {}, [foot])])]),
+  );
+  detail.hidden = false;
+}
+
+async function load() {
+  const banner = $('banner');
+  try {
+    const res = await fetch('/api/usage', { cache: 'no-store' });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'The page could not read the usage (HTTP ' + res.status + ').');
+    state.data = body;
+    $('root').textContent = body.root;
+    banner.hidden = true;
+  } catch (err) {
+    state.data = null;
+    banner.textContent = err.message;
+    banner.hidden = false;
+  }
+  render();
+}
+
+for (const button of document.querySelectorAll('[data-filter]')) {
+  button.addEventListener('click', () => {
+    state.filter = button.dataset.filter;
+    state.selected = null;
+    render();
+  });
+}
+$('refresh').addEventListener('click', load);
+// Keeps the server's idle timer from stopping it while this page is open.
+setInterval(() => fetch('/api/health', { cache: 'no-store' }).catch(() => {}), 60_000);
+load();
+</script>
+</body>
+</html>

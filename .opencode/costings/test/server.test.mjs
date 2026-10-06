@@ -119,3 +119,13 @@ test('--csv writes the export to stdout, with nothing on stderr', async (t) => {
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /--csv must be summary or replies/);
 });
+
+test('GET / serves the page with a strict content security policy and nothing from the internet', async (t) => {
+  const srv = await serve(t, { fixture: false });
+  const page = await request(srv.port, { path: '/' });
+  assert.equal(page.status, 200);
+  assert.equal(page.headers['content-type'], 'text/html; charset=utf-8');
+  assert.match(page.headers['content-security-policy'], /default-src 'none'/);
+  assert.match(page.text, /<title>Token usage<\/title>/);
+  assert.doesNotMatch(page.text, /https?:\/\//);
+});
