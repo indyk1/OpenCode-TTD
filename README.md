@@ -52,7 +52,7 @@ Everything runs on .NET Aspire: the AppHost describes the app and its resources,
 Prerequisites:
 - .NET SDK 10 or later (it includes `dnx`, which downloads Roslynk the first time opencode starts in the project)
 - [Aspire CLI](https://aspire.dev/get-started/install-cli/)
-- Node.js 20+
+- Node.js 22.13+ (its built-in SQLite holds the token usage behind `/costings`; Node 20 reached end of life in April 2026)
 - git, with `user.name` and `user.email` set
 - [opencode](https://opencode.ai) 1.14.27 or later. `opencode.json` sets `"shell": "bash"`, so the agents' commands run in bash on every system - the same shell opencode's permission rules are written for. Older versions refuse to start with that setting.
 - Podman (free) or Docker, for databases and other resources. Docker Desktop needs a paid subscription in larger organisations.
@@ -103,12 +103,20 @@ Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`
 - **Port 6502 taken?** Give the `roslynk` entry in `opencode.json` its own port: `"environment": { "Roslynk__Port": "6517" }`, and change `6502` to match in the debugger's `curl *:6502*` rule and in the browser server's `--blocked-origins`.
 - **Not available?** The agents carry on with their usual tools and say so in their report.
 
+## Token usage
+Every model reply's tokens are recorded, so you can see what each feature and bug used, per agent. Type `/costings` in opencode to open the page in your browser; it also downloads the numbers as CSV (see `.opencode/costings/README.md`).
+- **How it is recorded.** An opencode plugin (`.opencode/plugins/usage-recorder.js`) writes one row per model reply into `.workflow/usage.db`, a SQLite file, tagged with the change and the agent. `scripts/finish-change.sh` marks the change finished. Nothing is installed: opencode and Node.js both include SQLite.
+- **Per machine.** The file is git-ignored and stays on the computer that ran opencode (inside WSL on Windows). Each git worktree has its own.
+- **Tokens, not money.** The page shows input, output, reasoning, cache read and cache write tokens. The CSVs also carry opencode's cost estimate, which comes from a public price list and may be $0 with a subscription login.
+- **Never in the way.** If recording fails, the work carries on; only those numbers are missing.
+
 ## Commands
 - `/setup <Title> - <what it does>` - create a new application (once)
 - `/feature <what you want>` - a change
 - `/bug <what happened>` - investigate and fix a bug
 - `/deploy` - put it online or update it
 - `/resume <change-name>` - carry on; state lives in `openspec/changes/<name>/status.md`
+- `/costings` - see how many tokens each feature and bug used, per agent, in your browser (with CSV export)
 
 ## What is enforced, and how
 
@@ -137,10 +145,14 @@ Bash rules are guard rails, not a sandbox. The lock is what reliably catches a c
 AGENTS.md, GUIDE.md               rules every agent reads; the driver's guide
 opencode.json                     default agent, MCP servers, each limited to the agents that need it; global guard rails
 .opencode/agents/                 the six agents
-.opencode/commands/               /setup, /feature, /bug, /deploy, /resume
+.opencode/commands/               /setup, /feature, /bug, /deploy, /resume, /config, /costings
 .opencode/skills/vertical-slices/ examples, platform patterns, the overview command
 .opencode/skills/roslynk/         when and how the developer and debugger use Roslynk
-.workflow/                        acceptance.lock (commit it), debugger.env (git-ignored)
+.opencode/plugins/                usage-recorder.js: records each model reply's tokens
+.opencode/costings/               the /costings page, its CSV exports and the recorder's logic
+.opencode/config-editor/          the /config page
+.opencode/lib/                    plumbing shared by the two local pages
+.workflow/                        acceptance.lock (commit it), debugger.env and usage.db (git-ignored)
 openspec/config.yaml              default schema + project context
 openspec/schemas/vsa-tdd/         the feature workflow's artifacts and their instructions
 openspec/schemas/vsa-tdd-bugfix/  the bug track's artifacts and their instructions

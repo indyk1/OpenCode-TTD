@@ -17,6 +17,7 @@ Open a terminal in your project folder, type `opencode` and press Enter.
 | `/bug` | something isn't working | `/bug On the orders page, cancelling an order with two items shows an error. I expected "Order cancelled".` |
 | `/deploy` | put the app online, or update it | `/deploy` |
 | `/resume` | carry on after closing opencode | `/resume cancel-orders` |
+| `/costings` | see how many tokens each feature and bug used | `/costings` |
 
 **Good requests** say who does what, and why: "Shop staff see new orders appear straight away, so they can start packing" works better than "add SignalR". Don't name technologies - those were chosen at setup, and the agents translate. Ask for one thing at a time, smallest first.
 
