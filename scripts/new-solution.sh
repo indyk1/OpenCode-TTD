@@ -14,6 +14,10 @@
 # Every package added is free and OSI-licensed (MIT, BSD-3-Clause or Apache-2.0).
 # It also records the description as the first line of the context block in
 # openspec/config.yaml, so every planning artifact knows what the application is for.
+# First it makes the folder a git repository if it is not in one yet - without committing:
+# the human makes the first commit, and scripts/finish-change.sh saves each change after
+# that - and makes sure .gitignore keeps local settings files out of git (local development
+# secrets belong in user secrets).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=scripts/lib.sh
@@ -28,6 +32,7 @@ usage="usage: scripts/new-solution.sh <RootNamespace> \"<Title> - <description>\
 grep -q "^context: |" openspec/config.yaml 2> /dev/null ||
   die "openspec/config.yaml has no 'context: |' block to record the description in"
 command -v dotnet > /dev/null 2>&1 || die "the .NET SDK is not installed (https://dot.net)"
+command -v git > /dev/null 2>&1 || die "git is not installed (https://git-scm.com)"
 if compgen -G "*.sln" > /dev/null || compgen -G "*.slnx" > /dev/null || compgen -G "src/*/*.csproj" > /dev/null; then
   die "a solution already exists here - this script is only for new solutions"
 fi
@@ -37,8 +42,27 @@ sdk_major="$(dotnet --version | cut -d. -f1)"
 
 quiet() { "$@" > /dev/null; }
 
-echo "==> Creating the solution and projects for $app (.NET SDK $(dotnet --version))"
+echo "==> Setting up git"
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  # The human's own default branch name, otherwise main. Passing it also keeps newer git quiet.
+  git -c init.defaultBranch="$(git config --get init.defaultBranch || echo main)" init -q
+fi
 [ -f .gitignore ] || quiet dotnet new gitignore
+# Local settings files never go into git, even in a repository that came with its own .gitignore.
+# A line may end in a carriage return: dotnet writes the file with CRLF line endings on Windows.
+missing=()
+for entry in local.settings.json .env; do
+  grep -qxF -e "$entry" -e "$entry"$'\r' .gitignore || missing+=("$entry")
+done
+if [ "${#missing[@]}" -gt 0 ]; then
+  {
+    echo
+    echo "# Local settings - never commit them. Local development secrets go in user secrets (dotnet user-secrets)."
+    printf '%s\n' "${missing[@]}"
+  } >> .gitignore
+fi
+
+echo "==> Creating the solution and projects for $app (.NET SDK $(dotnet --version))"
 quiet dotnet new sln -n "$app"
 quiet dotnet new web -n "$app" -o "src/$app"
 projects=("src/$app/$app.csproj")

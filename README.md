@@ -61,7 +61,7 @@ Prerequisites:
 
 Then:
 1. `npm install -g @fission-ai/openspec@latest`
-2. Copy this template into the root of your repository. It adds only `.opencode/`, `opencode.json`, `AGENTS.md`, `GUIDE.md`, `openspec/`, `scripts/` and `.workflow/`.
+2. Copy this template into the root of your project folder. It does not need to be a git repository yet: `/setup` creates one if needed, and adds a `.gitignore` that keeps build output and local settings files (`local.settings.json`, `.env`) out of git - local development secrets go in user secrets. The template adds only `.opencode/`, `opencode.json`, `AGENTS.md`, `GUIDE.md`, `openspec/`, `scripts/` and `.workflow/`.
 3. `opencode models anthropic` should list `claude-opus-5-5` and `claude-sonnet-5-5`. If not, update opencode; for another provider, change the `model:` lines in `.opencode/agents/*.md`.
 4. New application: run `opencode` and `/setup <Title> - <what it does>`. Existing solution: see below.
 5. Commit.

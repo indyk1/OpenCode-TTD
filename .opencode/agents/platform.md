@@ -87,7 +87,7 @@ The command gives you the application's title and what it will do, usually `<Tit
 - *Will other systems or AI assistants use it?* Neither / other systems, through a documented API / AI assistants (MCP) / both.
 Nothing else needs deciding now.
 
-**Create the solution.** Run `scripts/new-solution.sh <RootNamespace> "<Title> - <description>"`. It creates the app, the three test projects, the Aspire AppHost and ServiceDefaults, adds the free packages, and records the description in `openspec/config.yaml` (never edit that file yourself - a malformed config makes OpenSpec silently ignore it). If it fails, read the error, fix the cause, and finish by hand with `dotnet new`, `dotnet sln` and `dotnet add`.
+**Create the solution.** Run `scripts/new-solution.sh <RootNamespace> "<Title> - <description>"`. It makes the folder a git repository if it is not one yet (without committing), makes sure `.gitignore` keeps local settings files out of git, creates the app, the three test projects, the Aspire AppHost and ServiceDefaults, adds the free packages, and records the description in `openspec/config.yaml` (never edit that file yourself - a malformed config makes OpenSpec silently ignore it). If it fails, read the error, fix the cause, and finish by hand with `dotnet new`, `dotnet sln` and `dotnet add`.
 
 **Write the infrastructure** from the vertical-slices skill, replacing `Shop` with the root namespace:
 - `references/infrastructure.md`: `src/<App>/Shared/Infrastructure/IEndpoint.cs`, `EndpointExtensions.cs`, `src/<App>/AssemblyInfo.cs`, and `src/<App>/Program.cs` with the wiring shown (including `AddServiceDefaults` and `MapDefaultEndpoints`).

@@ -11,6 +11,7 @@ This repository is built with a gated, test-first workflow (see README.md). Thes
 - Every technology choice - hosting, database, sign-in, live updates, APIs for other systems, AI-assistant access, email, storage - follows `openspec/decisions/platform.md`. Anything not decided there is asked about in plain English before it is built.
 - `src/<App>.AppHost` (what runs: the app and its resources) and `src/<App>.ServiceDefaults` (health, telemetry, resilience) belong to the platform agent. Application code never references the AppHost.
 - `aspire start` runs the app and its resources in the background; `aspire stop` stops it.
+- Local development secrets (API keys, passwords, connection strings for outside services) live in user secrets, never in `appsettings*.json`, `local.settings.json` or any committed file. In Aspire a secret is an AppHost parameter (`AddParameter(..., secret: true)`) whose value the human sets with `dotnet user-secrets` - agents never see or type secret values. The skill's `references/platform.md` shows the pattern.
 
 ## Architecture: vertical slices only
 - One slice = one use case at the API boundary (one command or query) = one OpenSpec requirement.

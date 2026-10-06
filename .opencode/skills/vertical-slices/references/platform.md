@@ -80,9 +80,31 @@ Then in `AppFactory.ConfigureWebHost`: `builder.UseSetting("ConnectionStrings:sh
 
 Containers need a container runtime: Podman (free) or Docker. With Podman, Testcontainers may need `DOCKER_HOST` pointed at the Podman socket. On a Mac, Podman runs inside a virtual machine that must be started (`podman machine start`), and Testcontainers works with it only when the human's environment sets `DOCKER_HOST` to the Podman socket (so it finds Podman) and `TESTCONTAINERS_RYUK_DISABLED=true` (its clean-up container cannot run there) - see the README, "macOS". These are settings on the human's computer: when containers cannot start, report the error to the human rather than working around it in code.
 
+## Secrets
+
+Local development secrets - API keys, passwords, connection strings for outside services - live in user secrets, outside the repository. Never in `appsettings*.json`, `local.settings.json` or any other committed file; `.gitignore` keeps `local.settings.json` and `.env` out of git as a safety net, not as a place for secrets.
+
+A secret the app needs is an AppHost parameter, stored in the AppHost's user secrets (the AppHost template already has a `UserSecretsId`). **AppHost - platform agent:**
+
+```csharp
+var paymentsKey = builder.AddParameter("payments-api-key", secret: true);
+
+builder.AddProject<Projects.Shop>("shop")
+    .WithExternalHttpEndpoints()
+    .WithEnvironment("Payments__ApiKey", paymentsKey);
+```
+
+The app reads it as ordinary configuration (`Payments:ApiKey`). The human sets the value - agents never see or type secret values:
+
+```bash
+dotnet user-secrets set "Parameters:payments-api-key" "<value>" --project src/Shop.AppHost
+```
+
+Acceptance tests never need the real value: they substitute the outside service and supply any setting with `builder.UseSetting(...)` in `AppFactory`. How the deployed app gets the value depends on the host - confirm with `aspire docs search "external parameters"` when adding the deployment target.
+
 ## Capabilities: where they live and how they are tested
 
-- **Sign-in.** Email and password: ASP.NET Core Identity (Microsoft, free). Microsoft or Google accounts: OpenID Connect (`Microsoft.AspNetCore.Authentication.OpenIdConnect`). Never Duende IdentityServer (licence). Endpoints opt in with `.RequireAuthorization()`. Acceptance tests sign in through a test authentication handler registered in `AppFactory` - real authorisation rules, a fake identity. The change that first builds sign-in also adds a debugger test account that exists only when the app runs in Development, its email and password read from user secrets (never from code); the human copies the same values into `.workflow/debugger.env`.
+- **Sign-in.** Email and password: ASP.NET Core Identity (Microsoft, free). Microsoft or Google accounts: OpenID Connect (`Microsoft.AspNetCore.Authentication.OpenIdConnect`). Never Duende IdentityServer (licence). Endpoints opt in with `.RequireAuthorization()`. Acceptance tests sign in through a test authentication handler registered in `AppFactory` - real authorisation rules, a fake identity. The change that first builds sign-in also adds a debugger test account that exists only when the app runs in Development, its email and password kept as AppHost secret parameters in user secrets (see Secrets above - never in code); the human copies the same values into `.workflow/debugger.env`.
 - **Live updates.** SignalR, built in. The hub lives in `Shared/Infrastructure/Realtime/`; slices push through `IHubContext<THub>`. Acceptance tests connect a real SignalR client (`Microsoft.AspNetCore.SignalR.Client`) to the in-memory server and assert the message it receives. Running more than one copy of the app later needs a backplane - a platform decision.
 - **A documented API for other systems.** OpenAPI: `builder.Services.AddOpenApi();` and `app.MapOpenApi();` (package `Microsoft.AspNetCore.OpenApi`). Slices describe themselves through `TypedResults`, `.WithName(...)` and `.WithSummary(...)`.
 - **AI assistants (MCP).** The official C# SDK, `ModelContextProtocol.AspNetCore`: `builder.Services.AddMcpServer().WithHttpTransport().WithToolsFromAssembly();` and `app.MapMcp();` - check the current API in the SDK's docs. A tool is a second entry point into a slice: `<Slice>.McpTool.cs` next to `<Slice>.Endpoint.cs`, both calling the same internal slice method. When a slice gets a tool, move its logic out of the HTTP handler into that method.
