@@ -1,6 +1,6 @@
 # Project rules
 
-This repository is built with a gated, test-first workflow (see README.md). These rules apply to every agent and every human.
+This repository is built with a gated, test-first workflow (see `.opencode/docs/workflow.md`). These rules apply to every agent and every human.
 
 ## Stack
 - .NET 10 and ASP.NET Core minimal APIs, run and deployed with .NET Aspire

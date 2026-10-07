@@ -46,7 +46,7 @@ node .opencode/costings/server.mjs --csv summary|replies [--filter all|feature|b
 ```
 
 ## Where the data lives
-`.workflow/usage.db` (SQLite), git-ignored, on the computer that runs opencode - inside WSL on Windows. Each git worktree has its own. Delete it to start counting from zero.
+`.workflow/usage.db` (SQLite), git-ignored, on the computer that runs opencode - inside WSL if you run it there. Each git worktree has its own. Delete it to start counting from zero.
 
 ## Safety
 The server binds to 127.0.0.1 only and never writes the database: it opens it read-only for each request. Like the config editor, it rejects requests whose `Host` is not `127.0.0.1:<port>` or `localhost:<port>`, and accepts its one POST (`/api/shutdown`) only as `application/json` from its own origin. Both pages share that code in `.opencode/lib/local-web.mjs`.
