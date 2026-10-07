@@ -78,7 +78,7 @@ public sealed class TestDatabase
 
 Then in `AppFactory.ConfigureWebHost`: `builder.UseSetting("ConnectionStrings:shopdb", TestDatabase.ConnectionString);`. The design decides how the schema is created for tests and how tests stay independent - unique data per test, or a reset between tests.
 
-Containers need a container runtime: Podman (free) or Docker. With Podman, Testcontainers may need `DOCKER_HOST` pointed at the Podman socket. On a Mac, Podman runs inside a virtual machine that must be started (`podman machine start`), and Testcontainers works with it only when the human's environment sets `DOCKER_HOST` to the Podman socket (so it finds Podman) and `TESTCONTAINERS_RYUK_DISABLED=true` (its clean-up container cannot run there) - see the README, "macOS". These are settings on the human's computer: when containers cannot start, report the error to the human rather than working around it in code.
+Containers need a container runtime: Podman (free) or Docker. With Podman, Testcontainers may need `DOCKER_HOST` pointed at the Podman socket. On a Mac, Podman runs inside a virtual machine that must be started (`podman machine start`), and Testcontainers works with it only when the human's environment sets `DOCKER_HOST` to the Podman socket (so it finds Podman) and `TESTCONTAINERS_RYUK_DISABLED=true` (its clean-up container cannot run there) - see `.opencode/docs/setup.md`, "macOS". These are settings on the human's computer: when containers cannot start, report the error to the human rather than working around it in code.
 
 ## Secrets
 

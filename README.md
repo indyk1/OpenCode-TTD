@@ -2,182 +2,132 @@
 
 A team of AI agents builds a .NET application with you. You describe what you want in plain English; they plan it, write the tests first, build it as vertical slices, check it, and save it - coming back to you at three checkpoints. Nothing moves past a checkpoint without your approval, and you never need to read code to give it.
 
-**Driving it day to day? Read [GUIDE.md](GUIDE.md).** This README is the technical reference.
+Built on .NET 10, ASP.NET Core minimal APIs and .NET Aspire, tested with NUnit and NSubstitute, planned with OpenSpec. Runs on Windows, macOS and Linux.
+
+- **Driving it day to day?** Read [GUIDE.md](GUIDE.md).
+- **Installing it?** Go to [Setup](#setup).
+- **Want the detail?** See [Documentation](#documentation).
+
+## How it works
+
+Every change goes through the same gated loop. Each checkpoint is a permission prompt - your signature.
+
+| Step | Who | What happens | Your checkpoint |
+|---|---|---|---|
+| 1. Plan | senior-dev | Writes the OpenSpec change - proposal, GIVEN/WHEN/THEN scenarios, design, test plan, tasks - and asks you its business and platform questions in plain English | Approve the plan: *launch test-writer* |
+| 2. Red | test-writer, test-reviewer | One failing acceptance test per scenario, checked by a different model and summarised for you in plain English | Approve the tests: *scripts/lock-tests.sh* |
+| 3. Green | developer | Implements slice by slice until the locked tests pass; it cannot touch them | - |
+| 4. Verify | senior-dev | Build, every test, the lock, scenario coverage and architecture rules, then a review of the diff | Accept the result: *scripts/finish-change.sh* |
+
+Bugs take a lighter track with two checkpoints: the debugger reproduces the bug on a local copy and explains the cause, a test is written that fails *because of the bug*, and then it is fixed. Step by step: [.opencode/docs/workflow.md](.opencode/docs/workflow.md).
+
+## The agents
+
+### Primary agents - the ones you talk to
 
 | Agent | Model | Effort | Does | Can edit |
 |---|---|---|---|---|
-| **senior-dev** (primary) | Claude Opus 5.5 | high | Plans with OpenSpec, asks you business and platform questions in plain English, writes the test plan, delegates, verifies, saves | `openspec/` only |
+| **senior-dev** (default) | Claude Opus 5.5 | high | Plans with OpenSpec, asks you business and platform questions in plain English, writes the test plan, delegates, verifies, saves | `openspec/` only |
+| **platform** (also a subagent) | Claude Sonnet 5.5 | high | `/setup`, `/deploy`, and Aspire resources such as a database when a plan needs one | the Aspire projects, app wiring and test infrastructure, platform decisions |
+
+### Subagents - launched for you, one job each
+
+| Agent | Model | Effort | Does | Can edit |
+|---|---|---|---|---|
 | **test-writer** | Claude Sonnet 5.5 | high | Turns the test plan into failing acceptance tests and empty slice contracts | acceptance tests, `*.Contracts.cs` |
 | **test-reviewer** | Claude Opus 5.5 | high | Checks the tests independently and describes each in plain English | nothing |
 | **developer** | Claude Sonnet 5.5 | medium | Implements one slice at a time until its locked tests pass, with its own unit tests | `src/` except contracts and the Aspire projects; unit tests |
-| **platform** (primary + subagent) | Claude Sonnet 5.5 | high | `/setup`, Aspire resources such as a database, `/deploy` | the Aspire projects, app wiring and test infrastructure, platform decisions |
 | **debugger** | Claude Opus 5.5 | high | Reproduces a bug locally in a browser, reads logs, traces and code, explains the cause and fix | its investigation file only |
 
-## How a feature runs
+The writer and the reviewer are different models on purpose: tests are checked by someone other than their author. Change any agent's model or effort with [`/config`](#costings-and-config). Each agent's instructions and permissions are in `.opencode/agents/`.
 
-1. **Plan.** senior-dev writes the OpenSpec change: proposal, specs (one requirement per slice, GIVEN/WHEN/THEN scenarios), design (slice map, contracts, shared-knowledge and platform questions), test plan, tasks. If the change needs a platform resource that is decided but not built (say, the database), the platform agent adds it to the AppHost first.
-   **Checkpoint 1** - you answer its questions and approve the plan. *Signature: allowing test-writer to start.*
-2. **Red.** test-writer writes one acceptance test per scenario and proves each fails for the predicted reason. test-reviewer checks every test against the scenarios - a different model from the writer - and the writer fixes what it finds.
-   **Checkpoint 2** - you approve the tests from the reviewer's plain-English summary. *Signature: allowing `scripts/lock-tests.sh`.*
-3. **Green.** developer implements slice by slice and cannot touch the locked tests.
-4. **Verify.** senior-dev runs `scripts/verify.sh` (build, every test, lock, scenario coverage, architecture rules) and reviews the diff.
-   **Checkpoint 3** - you accept the result. *Signature: allowing `scripts/finish-change.sh`, which archives the change into the living specs and commits.*
+## Commands for building
 
-## How a bug runs
+### In opencode
 
-Bugs stay in OpenSpec - the regression test needs a scenario to trace to, and the behaviour the bug exposed belongs in the living spec - but on a lighter track: the `vsa-tdd-bugfix` schema (investigation → spec delta → test plan → tasks) with two checkpoints instead of three.
+| Command | When | Example |
+|---|---|---|
+| `/setup <Title> - <what it does>` | once, for a brand-new app | `/setup Acme Orders - lets small shops take orders online and track deliveries` |
+| `/feature <what you want>` | you want something new | `/feature Shop owners can see today's orders, newest first` |
+| `/bug <what happened>` | something isn't working | `/bug Cancelling an order with two items shows an error. I expected "Order cancelled".` |
+| `/deploy` | put it online, or update it | `/deploy` |
+| `/resume <change-name>` | carry on after closing opencode; its state lives in `openspec/changes/<name>/status.md` | `/resume cancel-orders` |
 
-1. **Investigate.** `/bug <what you did, what happened, what you expected>` → senior-dev opens a `fix-…` change and sends the debugger. It starts the app with `aspire start`, reproduces the bug in a headless browser (signing in with its own local test account if needed), reads the Aspire logs and traces, maps the failure to its slice and writes `investigation.md`: plain-English explanation, evidence, root cause, proposed fix, the scenario that would have caught it, and a classification. It never edits code.
-2. **Route by classification.**
-   - `spec-broken` (the code breaks what the spec says) or `spec-silent` (the spec missed the case): the bug track.
-   - `technical` (performance, configuration, a flaky test, a vulnerable package): the bug track without a spec change (`skip_specs`); the test plan says how the fix is proven.
-   - `as-specified` (the app does what was agreed): not a bug. You are asked whether to change it; if so, the same change switches to the feature schema, keeping the investigation.
-   - A fix that needs a shared-rule or platform decision also switches to the feature track.
-   - `not-reproduced`: you are asked for what the debugger needs.
-3. **Reproduce in a test.** test-writer writes the regression test, which must fail *because of the bug*; test-reviewer checks it.
-   **Checkpoint A** - you approve the diagnosis and its proof together. *Signature: `scripts/lock-tests.sh`.*
-4. **Fix and verify.** developer fixes the root cause; senior-dev verifies.
-   **Checkpoint B** - you accept it. *Signature: `scripts/finish-change.sh`.* The new scenario joins the living spec, so the bug cannot quietly come back.
+### In a terminal
 
-Broken in production? Roll back to the last good version first (a technical step), then fix it through `/bug`.
+| Command | Does |
+|---|---|
+| `aspire start` / `aspire stop` | run the app and its resources in the background, with the Aspire dashboard |
+| `dotnet build`, `dotnet test` | build; run every test - acceptance, unit and architecture |
+| `scripts/verify.sh <change>` | everything senior-dev checks before checkpoint 3 |
+| `scripts/check-test-lock.sh` | are the locked tests untouched? (`--list` shows what changed) |
+| `scripts/check-scenarios.sh <change> --plan\|--tests` | one test-plan entry, or one test, per scenario |
+| `.opencode/skills/vertical-slices/scripts/overview.sh [slices\|shared\|platform]` | existing slices, shared business rules, platform decisions |
 
-## Platform decisions and Aspire
+On Windows, run the `scripts/` commands from Git Bash; the others work in any terminal.
 
-`/setup` asks a few plain-English questions - where it will run, whether it stores data, sign-in, live updates, access for other systems or AI assistants - and records the answers in `openspec/decisions/platform.md`. Every agent follows them; anything not covered is asked before it is built, so no technology is picked by default. Capabilities are built by the first change that needs them, with tests.
+## Costings and config
 
-Everything runs on .NET Aspire: the AppHost describes the app and its resources, `aspire start` runs them locally with a dashboard, and `/deploy` uses `aspire deploy` (Azure Container Apps) or `aspire publish` (Docker Compose or Kubernetes for your own server or AWS). Acceptance tests deliberately do not use Aspire's test host - it runs the app out of process, so substitutes cannot be injected - and use `WebApplicationFactory` with throwaway containers for real dependencies instead.
+Two small web pages that run on your own computer (`127.0.0.1` only). They need only Node.js - nothing to install.
+
+| Command | Opens | Details |
+|---|---|---|
+| `/costings` | How many tokens each agent used on each feature and bug, with CSV export. An opencode plugin records every model reply into `.workflow/usage.db`, which stays on your computer. Tokens, not money. | [.opencode/costings/README.md](.opencode/costings/README.md) |
+| `/config` | Each agent's model and effort, picked from the models opencode lists. Restart opencode afterwards (`opencode --continue`). | [.opencode/config-editor/README.md](.opencode/config-editor/README.md) |
+
+Each takes one short model turn. To skip it, type `!node .opencode/costings/server.mjs --open --detach` (or `config-editor`) in opencode's shell mode. Both pages stop by themselves after 15 minutes without activity.
 
 ## Setup
 
-Prerequisites:
-- .NET SDK 10 or later (it includes `dnx`, which downloads Roslynk the first time opencode starts in the project)
-- [Aspire CLI](https://aspire.dev/get-started/install-cli/)
-- Node.js 22.13+ (its built-in SQLite holds the token usage behind `/costings`; Node 20 reached end of life in April 2026)
-- git, with `user.name` and `user.email` set
-- [opencode](https://opencode.ai) 1.14.27 or later. `opencode.json` sets `"shell": "bash"`, so the agents' commands run in bash on every system - the same shell opencode's permission rules are written for. Older versions refuse to start with that setting.
-- Podman (free) or Docker, for databases and other resources. Docker Desktop needs a paid subscription in larger organisations.
-- Google Chrome, for the debugger's browser
-- bash: on macOS and Linux everything runs natively in a terminal (macOS has a few extra steps, below); on Windows, run everything in WSL
+You install two things by hand - the **.NET 10 SDK** and **Node.js 22.13+** - and a script does the rest. It is plain Node and `dotnet`, so the same script runs on Windows, macOS and Linux.
 
-Then:
-1. `npm install -g @fission-ai/openspec@latest`
-2. Copy this template into the root of your project folder. It does not need to be a git repository yet: `/setup` creates one if needed, and adds a `.gitignore` that keeps build output and local settings files (`local.settings.json`, `.env`) out of git - local development secrets go in user secrets. The template adds only `.opencode/`, `opencode.json`, `AGENTS.md`, `GUIDE.md`, `openspec/`, `scripts/` and `.workflow/`.
-3. `opencode models anthropic` should list `claude-opus-5-5` and `claude-sonnet-5-5`. If not, update opencode; for another provider, change the `model:` lines in `.opencode/agents/*.md`.
-4. New application: run `opencode` and `/setup <Title> - <what it does>`. Existing solution: see below.
-5. Commit.
+1. Install the [.NET SDK](https://dot.net) 10 or later and [Node.js](https://nodejs.org) 22.13 or later.
+2. Copy this template into the root of your project folder. It does not need to be a git repository yet.
+3. In that folder, run `node scripts/install-tools.mjs`. Run it again any time: it skips what is already there and lists what is still missing.
+4. If it says the agents' models are not available, sign opencode in: `opencode auth login`.
+5. New application: run `opencode`, then `/setup <Title> - <what it does>`. Existing solution: see [.opencode/docs/setup.md](.opencode/docs/setup.md#existing-solution).
+6. Commit.
+
+What the script installs or checks:
+
+| Tool | Needed for | The script |
+|---|---|---|
+| OpenSpec CLI | senior-dev's planning | installs it: `npm install -g @fission-ai/openspec@latest` |
+| opencode 1.14.27+ | running the agents | installs it (`npm install -g opencode-ai@latest`), then checks it lists the models the agents use (`claude-opus-5-5` and `claude-sonnet-5-5`) |
+| Aspire CLI | `aspire start`, the dashboard, `/deploy` | installs it: `dotnet tool install -g Aspire.Cli` |
+| Aspire project templates | `/setup`, and adding Aspire to an existing solution | installs them: `dotnet new install Aspire.ProjectTemplates` |
+| Playwright and Google Chrome | the debugger's headless browser | fetches the Playwright MCP server, and installs Chrome if it is missing (`npx playwright install chrome`, which may ask for your password) |
+| Roslynk 2.0.0 | live code navigation for the developer and the debugger | downloads it ahead of time, so opencode's first start is quick |
+| git | saving each change; on Windows, Git Bash - the shell opencode runs the agents' commands in | checks it is installed, with `user.name` and `user.email` set (and Git Bash on Windows) |
+| Podman or Docker | databases and other resources, in the app and in the tests | checks one is installed and running; on macOS, also Podman's settings |
+| Azure CLI | `/deploy` to Azure only | checks it is installed; signing in (`az login`) is yours |
+
+It does not install git, Podman or Docker itself - they need admin rights or a licence decision (Docker Desktop needs a paid subscription in larger organisations) - so it prints the exact command for your system instead.
+
+**On Windows** you work in PowerShell or Windows Terminal as usual - no WSL. opencode runs the agents' commands in Git Bash, which comes with Git for Windows. WSL still works if you prefer it.
+
+Installing by hand, macOS and Windows notes, and existing solutions: [.opencode/docs/setup.md](.opencode/docs/setup.md).
 
 Do not run `openspec init --tools opencode` or `aspire agent init`: they add generic commands, skills and MCP configuration that bypass this workflow's checkpoints and permissions. The template already configures what it needs.
 
-### macOS
-Everything runs natively in Terminal; only Podman uses a virtual machine, for the containers. With [Homebrew](https://brew.sh):
-```bash
-xcode-select --install
-brew install --cask dotnet-sdk google-chrome
-brew install node podman
-curl -sSL https://aspire.dev/install.sh | bash
-```
-Then install opencode as its site describes, and the OpenSpec CLI as above.
-- **Open a new Terminal window** afterwards. The Aspire installer adds itself to the `PATH` in `~/.zshrc`, and opencode passes on the `PATH` of the Terminal it was started from.
-- **Chrome must be in `/Applications`** (where the installer puts it): it is the only place the debugger's browser looks.
-- **Podman** runs inside a Linux virtual machine. Create it once with `podman machine init`; start it with `podman machine start` after every restart of the Mac, or install Podman Desktop (`brew install --cask podman-desktop`), which can start it at login. Then add these lines to `~/.zshrc` and open a new Terminal window:
-  ```bash
-  export ASPIRE_CONTAINER_RUNTIME=podman
-  export DOCKER_HOST="unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')"
-  export TESTCONTAINERS_RYUK_DISABLED=true
-  ```
-  Testcontainers, which runs the acceptance tests' databases, looks only for Docker unless `DOCKER_HOST` points it at Podman. Its clean-up container (Ryuk) cannot run on rootless Podman on a Mac, so a test run that crashes can leave its containers running: `podman ps` lists them and `podman rm -f <name>` removes one. With Docker Desktop instead of Podman, none of this is needed.
+## Staying safe
 
-### Existing solution
-Bring it to .NET 10 and add Aspire (`dotnet new install Aspire.ProjectTemplates`, then `aspire-apphost` and `aspire-servicedefaults` projects named `<App>.AppHost` and `<App>.ServiceDefaults`). Make sure `tests/<App>.AcceptanceTests` (NUnit, `Microsoft.AspNetCore.Mvc.Testing`, `NSubstitute`) and `tests/<App>.UnitTests` (NUnit, `NSubstitute`) exist. Recommended: the architecture tests from `.opencode/skills/vertical-slices/references/architecture-tests.md`. Describe the application in `openspec/config.yaml` (`  Application: <Title> - <what it does>` as the first line of the `context` block), write your platform decisions in `openspec/decisions/platform.md`, and lock any existing acceptance tests: `scripts/lock-tests.sh initial`.
+- **Always answer permission prompts with "Allow once."** "Always" lasts for the session in opencode 1 and is saved for the whole project in opencode 2, which silently removes that checkpoint.
+- **Never start opencode with `--auto`.**
+- Each agent can edit only its own areas, and no agent can edit the workflow itself: `.opencode/`, `opencode.json`, `scripts/`, `.workflow/`, `AGENTS.md` and `openspec/schemas/`.
 
-## The debugger, safely
-- It runs a **local** copy only. The browser is a headless Playwright MCP server limited to `localhost` (`--allowed-origins`). Playwright documents origin filtering as a guard rail rather than a security boundary, so never point the debugger at a real environment.
-- Its credentials live in `.workflow/debugger.env`, which git ignores. The browser server receives the file as its secrets file and masks those values in everything it returns to the agent. If the agent ever needs to read the file itself, you are asked first. Use a local-only test account - never a real one.
-- The browser and Aspire MCP tools are denied to every agent except the debugger.
+What is enforced and how, the debugger's local-only browser, and Roslynk's read-only tools: [.opencode/docs/safety.md](.opencode/docs/safety.md).
 
-## Roslynk, read-only
-[Roslynk](https://github.com/mrpmorris/Roslynk) (MIT) gives the developer and the debugger a live Roslyn compilation of the solution: go to definition, find references and callers, read a single member, and compile errors near-instantly instead of after a full `dotnet build`. `opencode.json` pins Roslynk 2.0.0 and starts it through `dnx`, so there is nothing to install.
-- **Read-only.** `opencode.json` denies every `roslynk_*` tool; `developer.md` and `debugger.md` allow its 20 read-only tools by name. Its 8 editing tools (`apply_patch`, `rename_symbol`, `rename_parameter`, `change_signature`, `extract_method`, `remove_unused_usings`, `apply_code_action`, `apply_code_fix`) write straight to disk and could reach the tests, the lock and the workflow files, so no agent gets them. Edits still go through each agent's own edit permissions.
-- **A shared background process.** opencode starts Roslynk with every session in the project - only the developer and the debugger can use its tools - and the first start launches a daemon on `localhost:6502` (loopback only, no sign-in) that later sessions share. It unloads a solution after 30 idle minutes but keeps running after opencode exits. Its log is `~/.local/share/Roslynk/daemon.log` (on macOS, `~/Library/Application Support/Roslynk/daemon.log`); stop it with `pkill -f Morris.Roslynk.Mcp`.
-- **Kept off the daemon's port.** The daemon accepts any local connection, including calls to its editing tools, so `debugger.md` denies `curl *:6502*` and the browser server blocks `http://localhost:6502` (`--blocked-origins`). Like the bash rules, this is a guard rail, not a sandbox.
-- **Port 6502 taken?** Give the `roslynk` entry in `opencode.json` its own port: `"environment": { "Roslynk__Port": "6517" }`, and change `6502` to match in the debugger's `curl *:6502*` rule and in the browser server's `--blocked-origins`.
-- **Not available?** The agents carry on with their usual tools and say so in their report.
+## Documentation
 
-## Token usage
-Every model reply's tokens are recorded, so you can see what each feature and bug used, per agent. Type `/costings` in opencode to open the page in your browser; it also downloads the numbers as CSV (see `.opencode/costings/README.md`).
-- **How it is recorded.** An opencode plugin (`.opencode/plugins/usage-recorder.js`) writes one row per model reply into `.workflow/usage.db`, a SQLite file, tagged with the change and the agent. `scripts/finish-change.sh` marks the change finished. Nothing is installed: opencode and Node.js both include SQLite.
-- **opencode 1 and opencode 2.** Recording works on both.
-- **Per machine.** The file is git-ignored and stays on the computer that ran opencode (inside WSL on Windows). Each git worktree has its own.
-- **Tokens, not money.** The page shows input, output, reasoning, cache read and cache write tokens. The CSVs also carry opencode's cost estimate, which comes from a public price list and may be $0 with a subscription login.
-- **Never in the way.** If recording fails, the work carries on; only those numbers are missing.
-
-## Commands
-- `/setup <Title> - <what it does>` - create a new application (once)
-- `/feature <what you want>` - a change
-- `/bug <what happened>` - investigate and fix a bug
-- `/deploy` - put it online or update it
-- `/resume <change-name>` - carry on; state lives in `openspec/changes/<name>/status.md`
-- `/costings` - see how many tokens each feature and bug used, per agent, in your browser (with CSV export)
-
-## What is enforced, and how
-
-| Rule | Mechanism |
+| Read | For |
 |---|---|
-| senior-dev never writes code | its edit permission covers `openspec/` only |
-| Tests are approved before implementation | starting test-writer and running the lock script both need your permission; the developer refuses to start without a valid lock |
-| The developer cannot change the tests | edits denied on acceptance tests and contracts; the SHA-256 lock is checked before and after implementation |
-| Tests are checked by someone other than their author | test-reviewer (a different model) reviews before checkpoint 2 / A |
-| A bug fix proves the bug first | the regression test must fail with the bug itself before the fix; reviewer checks it |
-| Slices stay independent | ArchUnitNET rules, run with every `dotnet test` |
-| Shared business rules and platform choices need you | design triggers; edits under `Shared/Domain/` ask you |
-| One acceptance test per scenario | `scripts/check-scenarios.sh` |
-| Free packages only | rules in `AGENTS.md`; every `dotnet add` / `aspire add` asks you |
-| Work is saved only with your approval | `scripts/finish-change.sh` asks; no agent can otherwise commit |
-| Deployment needs you | `aspire deploy`, `publish` and `destroy` ask; cloud sign-in is yours |
-| The workflow cannot be rewritten by the agents | no agent can edit `.opencode/`, `opencode.json`, `scripts/`, `.workflow/`, `AGENTS.md` or `openspec/schemas/` |
-| No agent is offered Roslynk's write tools | its 8 write tools are denied to every agent and only developer and debugger get its read-only tools; the debugger's curl and browser are kept off the daemon's port - a guard rail, like the bash rules |
-
-Bash rules are guard rails, not a sandbox. The lock is what reliably catches a changed test, and checkpoint 3 shows the full result.
-
-**Always answer permission prompts with "Allow once."** "Always" lasts for the session in opencode 1 and is saved for the whole project in opencode 2, which silently removes that checkpoint. Never run this workflow with `--auto`.
-
-## Layout
-```
-AGENTS.md, GUIDE.md               rules every agent reads; the driver's guide
-opencode.json                     default agent, MCP servers, each limited to the agents that need it; global guard rails
-.opencode/agents/                 the six agents
-.opencode/commands/               /setup, /feature, /bug, /deploy, /resume, /config, /costings
-.opencode/skills/vertical-slices/ examples, platform patterns, the overview command
-.opencode/skills/roslynk/         when and how the developer and debugger use Roslynk
-.opencode/plugins/                usage-recorder.js: records each model reply's tokens
-.opencode/costings/               the /costings page, its CSV exports and the recorder's logic
-.opencode/config-editor/          the /config page
-.opencode/lib/                    plumbing shared by the two local pages
-.workflow/                        acceptance.lock (commit it), debugger.env and usage.db (git-ignored)
-openspec/config.yaml              default schema + project context
-openspec/schemas/vsa-tdd/         the feature workflow's artifacts and their instructions
-openspec/schemas/vsa-tdd-bugfix/  the bug track's artifacts and their instructions
-openspec/decisions/               your shared-knowledge and platform decisions
-openspec/specs/                   living specs, built up change by change
-scripts/                          new-solution, lock, checks, verify, finish-change
-```
-
-Conventions in your code:
-```
-src/<App>/Features/<Area>/<Slice>/   one flat folder per slice
-src/<App>/Shared/Domain/             shared business rules (your decision only)
-src/<App>/Shared/Infrastructure/     technical plumbing
-src/<App>.AppHost/                   what runs (platform agent)
-src/<App>.ServiceDefaults/           health, telemetry, resilience (platform agent)
-tests/<App>.AcceptanceTests/         one test per scenario, locked after approval
-tests/<App>.UnitTests/               the developer's inner TDD loop
-tests/<App>.ArchitectureTests/       slice isolation rules (yours)
-```
-
-## Customising
-- **Teach the agents your patterns:** edit `.opencode/skills/vertical-slices/references/`. Agents cannot edit the skill, so it changes only when you do.
-- **Models and effort:** `model:` and `variant:` in each agent file (low, medium, high, xhigh, max). Or type `/config` in opencode to change them in your browser, picking from the models opencode lists (see `.opencode/config-editor/README.md`); restart opencode afterwards (`opencode --continue`).
-- **Fewer prompts for Shared/Domain:** in `developer.md`, change `"src/*/Shared/Domain/*": ask` to `allow`.
-- **Project rules for planning:** `openspec/config.yaml` (`context`, and `rules` per artifact). Keep it valid YAML: OpenSpec silently ignores a malformed file; senior-dev checks for this and stops.
-- **Weak-test detection:** Stryker.NET (Apache-2.0) mutation testing can be added to `scripts/verify.sh`.
-- **Upgrading Roslynk:** change the version in the `roslynk` command in `opencode.json` and read its release notes. Compare its tool list with the allowlists in `developer.md` and `debugger.md` - allow only tools it marks read-only - then update `.opencode/skills/roslynk/SKILL.md` to match.
+| [GUIDE.md](GUIDE.md) | the person driving it: what to type, the two kinds of pop-up, the golden rules |
+| [.opencode/docs/setup.md](.opencode/docs/setup.md) | installing by hand, macOS and Windows notes, adding the workflow to an existing solution |
+| [.opencode/docs/workflow.md](.opencode/docs/workflow.md) | how a feature and a bug run, step by step; platform decisions and Aspire |
+| [.opencode/docs/safety.md](.opencode/docs/safety.md) | what is enforced and how; the debugger, safely; Roslynk, read-only |
+| [.opencode/docs/reference.md](.opencode/docs/reference.md) | the template's layout, conventions in your code, customising |
+| [.opencode/costings/README.md](.opencode/costings/README.md) | token usage: how it is recorded, the page, CSV columns, options |
+| [.opencode/config-editor/README.md](.opencode/config-editor/README.md) | the model and effort editor |
+| [AGENTS.md](AGENTS.md) | the rules every agent reads |
+| [.workflow/README.md](.workflow/README.md) | the test lock, the debugger's test account, the usage database |

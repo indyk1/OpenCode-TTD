@@ -3,7 +3,7 @@
 You describe what you want in your own words. A small team of AI agents plans it, writes the tests, builds it and checks it - and comes back to you whenever it needs a decision. You never need to read or write code.
 
 ## Before the first time - ask someone technical, once
-On your computer they install: the .NET 10 SDK, the Aspire CLI, Node.js, the OpenSpec CLI, opencode (signed in to Claude), git (with your name and email set), Podman (so the app can run its database on your computer) and Google Chrome (for the debugger). On a Mac, everything runs in the Terminal app; on Windows, inside WSL. Then they copy this template into your project folder. README.md has the details.
+They copy this template into your project folder, install the .NET 10 SDK and Node.js, and run `node scripts/install-tools.mjs` there. It installs the rest - opencode, the OpenSpec CLI, the Aspire CLI and the debugger's browser among them - and says what is still needed, such as git with your name and email, Podman (so the app can run its database on your computer) and signing opencode in to Claude. It works the same on Windows, macOS and Linux. `.opencode/docs/setup.md` has the details.
 
 ## Starting
 Open a terminal in your project folder, type `opencode` and press Enter.
@@ -48,4 +48,4 @@ If your app has sign-in, the debugger needs its own account to test with. When s
 ## Seeing the app yourself
 Open a second terminal in the project folder and type `aspire start`. It prints the address of the dashboard, which links to your app. `aspire stop` stops it.
 
-**After restarting a Mac,** start Podman before you start opencode: type `podman machine start` in a terminal (or open Podman Desktop, if it was installed). Otherwise the app's database cannot start and the agents will say so.
+**After restarting a Mac or a Windows PC that uses Podman,** start Podman before you start opencode: type `podman machine start` in a terminal (or open Podman Desktop, if it was installed). Otherwise the app's database cannot start and the agents will say so.
