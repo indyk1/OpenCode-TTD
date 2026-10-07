@@ -20,12 +20,13 @@ acceptance_dirs() {
 # "<sha256>  <path>", ignoring carriage returns: Git for Windows checks files out with CRLF
 # line endings, and a lock made there must still match on macOS, Linux or in CI.
 sha256_of() {
+  local sum
   if command -v sha256sum >/dev/null 2>&1; then
-    hash="$(tr -d '\r' < "$1" | sha256sum)"
+    sum="$(tr -d '\r' < "$1" | sha256sum)"
   else
-    hash="$(tr -d '\r' < "$1" | shasum -a 256)"
+    sum="$(tr -d '\r' < "$1" | shasum -a 256)"
   fi
-  printf '%s  %s\n' "${hash%% *}" "$1"
+  printf '%s  %s\n' "${sum%% *}" "$1"
 }
 
 # Every file the human approves at checkpoint 2: all acceptance test files (except
