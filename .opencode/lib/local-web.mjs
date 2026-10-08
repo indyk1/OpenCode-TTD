@@ -1,7 +1,7 @@
-// Plumbing shared by the small local web pages under .opencode/ (the /config editor and the /costings token
-// usage page): request guards, JSON helpers, port finding, opening the browser, idle shutdown, and the
-// detached launcher that slash commands use. Node built-ins only - no package.json may live under .opencode/,
-// because opencode bun-installs .opencode/package.json.
+// Plumbing shared by the small local web pages under .opencode/ (the /config editor, the /costings token usage
+// page and the /diagram and /classes diagrams): request guards, JSON helpers, port finding, opening the browser,
+// idle shutdown, and the detached launcher that slash commands use. Node built-ins only - no package.json may live
+// under .opencode/, because opencode bun-installs .opencode/package.json.
 
 import http from 'node:http';
 import net from 'node:net';
@@ -329,9 +329,10 @@ function waitForServer(port, appId, root, child) {
 
 /**
  * --detach: reuse this app's server for `root`, or start `serverFile` in the background on a free port; open the
- * browser, print `runningLine(url)` and exit. Slash commands show that one line.
+ * browser, print `runningLine(url)` and exit. Slash commands show that one line. `urlPath` (e.g. '/classes') is
+ * added to the address that is opened and printed.
  */
-export async function launchDetached({ appId, name, serverFile, root, port, idleMinutes, open, runningLine }) {
+export async function launchDetached({ appId, name, serverFile, root, port, idleMinutes, open, runningLine, urlPath = '' }) {
   let start = port;
   const end = port + PORT_ATTEMPTS;
   while (start < end) {
@@ -350,7 +351,7 @@ export async function launchDetached({ appId, name, serverFile, root, port, idle
       child.unref();
     }
     if (ok) {
-      const url = `http://127.0.0.1:${found.port}`;
+      const url = `http://127.0.0.1:${found.port}${urlPath}`;
       if (open) await openBrowser(url);
       await writeOut(runningLine(url) + '\n');
       process.exit(0);
@@ -362,7 +363,7 @@ export async function launchDetached({ appId, name, serverFile, root, port, idle
 }
 
 /** Foreground: reuse a running server for `root`, or serve `create()` until Ctrl+C, /api/shutdown or the idle timeout. */
-export async function runForeground({ appId, name, root, port, strictPort, open, runningLine, create }) {
+export async function runForeground({ appId, name, root, port, strictPort, open, runningLine, create, urlPath = '' }) {
   if (port !== 0 && !strictPort) {
     const found = await findPort({ appId, root, start: port });
     if (!found) {
@@ -370,7 +371,7 @@ export async function runForeground({ appId, name, root, port, strictPort, open,
       process.exit(1);
     }
     if (found.reuse) {
-      const url = `http://127.0.0.1:${found.port}`;
+      const url = `http://127.0.0.1:${found.port}${urlPath}`;
       if (open) await openBrowser(url);
       console.log(runningLine(url));
       return;
@@ -384,7 +385,7 @@ export async function runForeground({ appId, name, root, port, strictPort, open,
     console.error(`${name} could not start on port ${port}: ${err.message}`);
     process.exit(1);
   }
-  const url = `http://127.0.0.1:${port}`;
+  const url = `http://127.0.0.1:${port}${urlPath}`;
   console.log(runningLine(url));
   if (process.stdout.isTTY) console.log('Press Ctrl+C to stop.');
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, () => app.shutdown());
