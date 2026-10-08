@@ -39,7 +39,7 @@ Bugs take a lighter track with two checkpoints: the debugger reproduces the bug 
 | **developer** | Claude Sonnet 5.5 | medium | Implements one slice at a time until its locked tests pass, with its own unit tests | `src/` except contracts and the Aspire projects; unit tests |
 | **debugger** | Claude Opus 5.5 | high | Reproduces a bug locally in a browser, reads logs, traces and code, explains the cause and fix | its investigation file only |
 
-The writer and the reviewer are different models on purpose: tests are checked by someone other than their author. Change any agent's model or effort with [`/config`](#costings-and-config). Each agent's instructions and permissions are in `.opencode/agents/`.
+The writer and the reviewer are different models on purpose: tests are checked by someone other than their author. Change any agent's model or effort with [`/config`](#local-pages-costings-config-and-diagrams). Each agent's instructions and permissions are in `.opencode/agents/`.
 
 ## Commands for building
 
@@ -66,16 +66,18 @@ The writer and the reviewer are different models on purpose: tests are checked b
 
 On Windows, run the `scripts/` commands from Git Bash; the others work in any terminal.
 
-## Costings and config
+## Local pages: costings, config and diagrams
 
-Two small web pages that run on your own computer (`127.0.0.1` only). They need only Node.js - nothing to install.
+Small web pages that run on your own computer (`127.0.0.1` only). They need only Node.js - nothing to install.
 
 | Command | Opens | Details |
 |---|---|---|
 | `/costings` | How many tokens each agent used on each feature and bug, with CSV export. An opencode plugin records every model reply into `.workflow/usage.db`, which stays on your computer. Tokens, not money. | [.opencode/costings/README.md](.opencode/costings/README.md) |
 | `/config` | Each agent's model and effort, picked from the models opencode lists. Restart opencode afterwards (`opencode --continue`). | [.opencode/config-editor/README.md](.opencode/config-editor/README.md) |
+| `/diagram` | The application's architecture as a Mermaid diagram: what the AppHost runs, each feature area and slice with its route and tests, the shared rules and plumbing, and a slice using another slice in red. | [.opencode/diagrams/README.md](.opencode/diagrams/README.md) |
+| `/classes` | A class diagram of one slice, feature area, the shared code or a whole project, drawn from the C# code. | [.opencode/diagrams/README.md](.opencode/diagrams/README.md) |
 
-Each takes one short model turn. To skip it, type `!node .opencode/costings/server.mjs --open --detach` (or `config-editor`) in opencode's shell mode. Both pages stop by themselves after 15 minutes without activity.
+Each takes one short model turn. To skip it, type `!node .opencode/costings/server.mjs --open --detach` (or `config-editor`, or `diagrams`) in opencode's shell mode. The pages stop by themselves after 15 minutes without activity. The diagrams load the Mermaid library from jsDelivr, pinned and checked; offline they show the diagram's Mermaid text instead.
 
 ## Setup
 
@@ -129,5 +131,6 @@ What is enforced and how, the debugger's local-only browser, and Roslynk's read-
 | [.opencode/docs/reference.md](.opencode/docs/reference.md) | the template's layout, conventions in your code, customising |
 | [.opencode/costings/README.md](.opencode/costings/README.md) | token usage: how it is recorded, the page, CSV columns, options |
 | [.opencode/config-editor/README.md](.opencode/config-editor/README.md) | the model and effort editor |
+| [.opencode/diagrams/README.md](.opencode/diagrams/README.md) | the architecture and class diagrams: what they show, how the code is read, Mermaid |
 | [AGENTS.md](AGENTS.md) | the rules every agent reads |
 | [.workflow/README.md](.workflow/README.md) | the test lock, the debugger's test account, the usage database |

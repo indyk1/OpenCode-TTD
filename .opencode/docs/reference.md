@@ -8,14 +8,15 @@ Where everything lives, the conventions in your code, and how to change the work
 AGENTS.md, GUIDE.md               rules every agent reads; the driver's guide
 opencode.json                     default agent, MCP servers, each limited to the agents that need it; global guard rails
 .opencode/agents/                 the six agents
-.opencode/commands/               /setup, /feature, /bug, /deploy, /resume, /config, /costings
+.opencode/commands/               /setup, /feature, /bug, /deploy, /resume, /config, /costings, /diagram, /classes
 .opencode/docs/                   setup, how the workflow runs, what is enforced, this reference
 .opencode/skills/vertical-slices/ examples, platform patterns, the overview command
 .opencode/skills/roslynk/         when and how the developer and debugger use Roslynk
 .opencode/plugins/                usage-recorder.js: records each model reply's tokens
 .opencode/costings/               the /costings page, its CSV exports and the recorder's logic
 .opencode/config-editor/          the /config page
-.opencode/lib/                    plumbing shared by the two local pages
+.opencode/diagrams/               the /diagram and /classes pages, and the C# reader behind them
+.opencode/lib/                    plumbing shared by the local pages
 .workflow/                        acceptance.lock (commit it), debugger.env and usage.db (git-ignored)
 openspec/config.yaml              default schema + project context
 openspec/schemas/vsa-tdd/         the feature workflow's artifacts and their instructions
