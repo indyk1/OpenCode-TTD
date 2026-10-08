@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagrams</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --border: #e2e5ea;
+    --border-strong: #c8cdd6;
+    --text: #1c2230;
+    --muted: #5d6676;
+    --faint: #8790a0;
+    --accent: #2d5bd7;
+    --accent-soft: #eaf0fd;
+    --danger: #b42318;
+    --danger-bg: #fdeceb;
+    --danger-border: #f2b8b2;
+    --warn-bg: #fff7e6;
+    --warn-border: #f1d29b;
+    --warn-text: #7a4b00;
+    --focus: #2d5bd7;
+    --radius: 8px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111419;
+      --surface: #181c23;
+      --surface-2: #20252e;
+      --border: #2a303a;
+      --border-strong: #3b424e;
+      --text: #e5e8ee;
+      --muted: #a0a8b6;
+      --faint: #7b8494;
+      --accent: #7fa2ff;
+      --accent-soft: #1d2945;
+      --danger: #ff8e85;
+      --danger-bg: #351c1c;
+      --danger-border: #6e3330;
+      --warn-bg: #2e2412;
+      --warn-border: #6b5222;
+      --warn-text: #f3cf8a;
+      --focus: #8fb0ff;
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .wrap { width: 100%; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+
+  .top { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .top-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; padding-top: 16px; padding-bottom: 16px; }
+  h1 { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 650; letter-spacing: -0.01em; }
+  .project-path { margin: 4px 0 0; color: var(--muted); font: 13px/1.4 var(--mono); overflow-wrap: anywhere; }
+  .tabs { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
+  .tabs a { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; background: var(--surface); color: var(--text); font-size: 14px; text-decoration: none; }
+  .tabs a + a { border-left: 1px solid var(--border-strong); }
+  .tabs a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .tabs a:hover { background: var(--surface-2); }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  button, select { font: inherit; color: inherit; }
+  .btn { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 550; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--surface-2); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+
+  main { padding-top: 20px; padding-bottom: 40px; }
+  .banner { margin-bottom: 16px; padding: 12px 14px; border: 1px solid var(--danger-border); border-radius: var(--radius); background: var(--danger-bg); color: var(--danger); }
+  .notice { margin-bottom: 16px; padding: 12px 14px; border: 1px solid var(--warn-border); border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-text); }
+  .notice ul { margin: 6px 0 0; padding-left: 20px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .card .label { color: var(--muted); font-size: 13px; }
+  .card .value { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .card.bad .value { color: var(--danger); }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
+  .controls label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+  .controls select { height: 34px; max-width: min(420px, 100%); padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); }
+  .zoom { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+  .zoom .btn { min-width: 34px; justify-content: center; padding: 0 10px; }
+  .zoom output { min-width: 48px; color: var(--muted); font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
+
+  .stage { position: relative; min-height: 240px; max-height: calc(100vh - 150px); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .diagram { padding: 16px; width: max-content; min-width: 100%; }
+  .diagram svg { display: block; max-width: none !important; }
+  .diagram .related rect, .diagram .related path, .diagram .related polygon { stroke-dasharray: 4 3; }
+  .diagram .related { opacity: 0.7; }
+  .status { margin: 0; padding: 48px 16px; color: var(--muted); text-align: center; }
+  .empty { margin: 0; padding: 48px 16px; border: 1px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--muted); text-align: center; }
+  .fallback { padding: 16px; }
+  .fallback p { margin: 0 0 12px; }
+  pre.source { margin: 0; padding: 12px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); font: 12.5px/1.45 var(--mono); white-space: pre; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 12px 0 0; padding: 0; color: var(--muted); font-size: 13px; list-style: none; }
+  .legend code { font: 12.5px var(--mono); color: var(--text); }
+  .legend strong { color: var(--text); font-weight: 600; }
+  .foot { margin-top: 16px; color: var(--faint); font-size: 12.5px; }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .zoom { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <h1 id="title">Diagrams</h1>
+      <p class="project-path" id="root"></p>
+    </div>
+    <div class="toolbar">
+      <nav class="tabs" aria-label="Diagrams">
+        <a href="/" id="tab-architecture">Architecture</a>
+        <a href="/classes" id="tab-classes">Classes</a>
+      </nav>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+      <button type="button" class="btn" id="copy" disabled>Copy Mermaid</button>
+      <a class="btn" id="download-mmd" href="/architecture.mmd" download>Download .mmd</a>
+      <button type="button" class="btn" id="download-svg" disabled>Download SVG</button>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  <div class="banner" id="banner" role="alert" hidden></div>
+  <div class="notice" id="warnings" hidden></div>
+  <section class="cards" id="cards" aria-label="Summary"></section>
+  <div class="controls">
+    <label id="scope-label" hidden>Show
+      <select id="scope"></select>
+    </label>
+    <label id="members-label" hidden><input type="checkbox" id="members" checked> Members</label>
+    <label id="related-label" hidden><input type="checkbox" id="related" checked> Types it uses or is used by</label>
+    <div class="zoom" role="group" aria-label="Zoom">
+      <button type="button" class="btn" id="zoom-out" aria-label="Zoom out">&minus;</button>
+      <output id="zoom-level">100%</output>
+      <button type="button" class="btn" id="zoom-in" aria-label="Zoom in">+</button>
+      <button type="button" class="btn" id="zoom-fit">Fit</button>
+      <button type="button" class="btn" id="zoom-reset">100%</button>
+    </div>
+  </div>
+  <div class="stage" id="stage">
+    <p class="status" id="status">Reading the code…</p>
+    <div class="diagram" id="diagram" aria-label="Diagram" role="img" hidden></div>
+    <div class="fallback" id="fallback" hidden>
+      <p id="fallback-text"></p>
+      <pre class="source" id="source"></pre>
+    </div>
+  </div>
+  <p class="empty" id="empty" hidden></p>
+  <ul class="legend" id="legend"></ul>
+  <p class="foot" id="foot"></p>
+</main>
+<script>
+'use strict';
+// Mermaid (MIT) is loaded from jsDelivr, pinned to one version and checked against its SHA-384 hash, so the browser
+// refuses any other file. Without it - offline, or blocked - the page shows the diagram's Mermaid text instead.
+const MERMAID = {
+  src: 'https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js',
+  integrity: 'sha384-EOXBFmc3gx5mb+vn0vPvvGqACToJD24hhacX5Yx+8NUUQrHIle/Qi5Bg9o3zKwW2',
+};
+const VIEWS = {
+  architecture: {
+    title: 'Architecture',
+    api: '/api/architecture',
+    mmd: '/architecture.mmd',
+    file: 'architecture',
+    foot: 'Drawn from the code each time you open or refresh it: the projects, what the AppHost runs, each feature area with its slices (HTTP method, route and tests), the shared business rules and the technical plumbing. Nothing is stored or changed.',
+    legend: [
+      ['Box inside an area', 'a slice: one use case, with its route and how many tests use it'],
+      ['Arrow', 'uses'],
+      ['Red dashed arrow', 'a slice using another slice - not allowed; the architecture tests fail on it'],
+      ['[[ ]]', 'a project the AppHost runs'],
+      ['Cylinder', 'a database or cache'],
+      ['Hexagon', 'a setting'],
+      ['Trapezoid', 'where /deploy puts it'],
+    ],
+  },
+  classes: {
+    title: 'Classes',
+    api: '/api/classes',
+    mmd: '/classes.mmd',
+    file: 'classes',
+    foot: 'Drawn from the C# code each time you open or refresh it, without compiling it. Pick a slice, a feature area, the shared code or a whole project. Nothing is stored or changed.',
+    legend: [
+      ['<|--', 'inherits from'],
+      ['<|..', 'implements'],
+      ['-->', 'holds (* = many)'],
+      ['..>', 'uses'],
+      ['+ ~ # -', 'public, internal, protected, private'],
+      ['underlined', 'static'],
+      ['Dashed box', 'outside the chosen part, shown without its members'],
+    ],
+  },
+};
+const view = location.pathname.replace(/\/+$/, '') === '/classes' ? 'classes' : 'architecture';
+const V = VIEWS[view];
+const params = new URLSearchParams(location.search);
+// zoom: 'auto' fits the width but never below 60%, so text stays readable; 'fit' fits the width; 'manual' keeps it.
+const state = { data: null, svg: null, zoom: 1, mode: 'auto', renders: 0 };
+const $ = (id) => document.getElementById(id);
+
+function el(tag, props = {}, children = []) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = value;
+    else node.setAttribute(key, value);
+  }
+  for (const child of [].concat(children)) if (child != null) node.append(child);
+  return node;
+}
+
+let mermaidPromise = null;
+function loadMermaid() {
+  mermaidPromise ??= new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = MERMAID.src;
+    script.integrity = MERMAID.integrity;
+    script.crossOrigin = 'anonymous';
+    script.referrerPolicy = 'no-referrer';
+    script.onload = () => resolve(window.mermaid || null);
+    script.onerror = () => resolve(null);
+    document.head.append(script);
+  });
+  return mermaidPromise;
+}
+
+const dark = window.matchMedia('(prefers-color-scheme: dark)');
+
+async function draw() {
+  const data = state.data;
+  if (!data) return;
+  const mermaid = await loadMermaid();
+  const diagram = $('diagram');
+  if (!mermaid) {
+    showFallback('The diagram is drawn by Mermaid, which the page loads from cdn.jsdelivr.net - and it could not be loaded (no internet connection, or the site is blocked). Here is the diagram as Mermaid text: copy it into a Markdown file on GitHub or into mermaid.live to see it.');
+    return;
+  }
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: dark.matches ? 'dark' : 'default',
+    maxTextSize: 5000000,
+    maxEdges: 20000,
+    flowchart: { useMaxWidth: false },
+    class: { useMaxWidth: false },
+  });
+  try {
+    const { svg } = await mermaid.render('mermaid-' + ++state.renders, data.mermaid);
+    diagram.innerHTML = svg;
+    state.svg = diagram.querySelector('svg');
+    diagram.hidden = false;
+    $('status').hidden = true;
+    $('fallback').hidden = true;
+    $('download-svg').disabled = false;
+    applyZoom();
+  } catch (err) {
+    showFallback('Mermaid could not draw this diagram: ' + (err && err.message ? err.message : err) + ' Here is its Mermaid text.');
+  }
+}
+
+function showFallback(text) {
+  state.svg = null;
+  $('diagram').hidden = true;
+  $('diagram').replaceChildren();
+  $('status').hidden = true;
+  $('fallback-text').textContent = text;
+  $('source').textContent = state.data.mermaid;
+  $('fallback').hidden = false;
+  $('download-svg').disabled = true;
+}
+
+/** The diagram's own size, from its viewBox. */
+function naturalSize() {
+  const box = state.svg && state.svg.viewBox && state.svg.viewBox.baseVal;
+  return box && box.width ? { width: box.width, height: box.height } : null;
+}
+
+function applyZoom() {
+  const size = naturalSize();
+  if (!size) return;
+  if (state.mode !== 'manual') {
+    const fit = ($('stage').clientWidth - 34) / size.width;
+    state.zoom = Math.min(1, Math.max(state.mode === 'auto' ? 0.6 : 0.1, fit));
+  }
+  state.svg.style.width = Math.round(size.width * state.zoom) + 'px';
+  state.svg.style.height = Math.round(size.height * state.zoom) + 'px';
+  $('zoom-level').textContent = Math.round(state.zoom * 100) + '%';
+}
+
+function zoomTo(zoom) {
+  state.mode = 'manual';
+  state.zoom = Math.min(4, Math.max(0.1, zoom));
+  applyZoom();
+}
+
+function renderCards() {
+  const d = state.data;
+  const card = (label, value, bad) =>
+    el('div', { class: 'card' + (bad ? ' bad' : '') }, [el('div', { class: 'label', text: label }), el('div', { class: 'value', text: String(value) })]);
+  if (view === 'architecture') {
+    const s = d.summary;
+    const cards = [card('Projects', s.projects), card('Feature areas', s.areas), card('Slices', s.slices), card('Shared rules', s.sharedRules), card('Acceptance tests', s.acceptanceTests), card('Resources', s.resources)];
+    if (s.crossSliceReferences) cards.push(card('Slices using slices', s.crossSliceReferences, true));
+    $('cards').replaceChildren(...cards);
+  } else {
+    $('cards').replaceChildren(card('Types shown', d.types), card('Related types', d.relatedTypes), card('Parts to choose from', d.scopes.length));
+  }
+}
+
+function renderScopes() {
+  const select = $('scope');
+  const groups = new Map();
+  for (const s of state.data.scopes) {
+    if (!groups.has(s.project)) groups.set(s.project, el('optgroup', { label: s.project }));
+    const option = el('option', { value: s.id, text: s.label + ' (' + s.count + ')' });
+    if (s.id === state.data.scope) option.selected = true;
+    groups.get(s.project).append(option);
+  }
+  select.replaceChildren(...groups.values());
+}
+
+function renderWarnings() {
+  const box = $('warnings');
+  const list = state.data.warnings || [];
+  if (state.data.requested && state.data.scope !== state.data.requested) list.unshift('There is no longer a part called ' + state.data.requested + ', so the first one is shown.');
+  if (!list.length) {
+    box.hidden = true;
+    return;
+  }
+  box.replaceChildren(el('strong', { text: 'Some of the code could not be read:' }), el('ul', {}, list.map((w) => el('li', { text: w }))));
+  box.hidden = false;
+}
+
+function query() {
+  if (view !== 'classes') return '';
+  const q = new URLSearchParams();
+  const scope = $('scope').value || params.get('scope');
+  if (scope) q.set('scope', scope);
+  if (!$('members').checked) q.set('members', '0');
+  if (!$('related').checked) q.set('related', '0');
+  const text = q.toString();
+  return text ? '?' + text : '';
+}
+
+async function load() {
+  const banner = $('banner');
+  $('refresh').disabled = true;
+  try {
+    const q = query();
+    const res = await fetch(V.api + q, { cache: 'no-store' });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'The page could not read the code (HTTP ' + res.status + ').');
+    state.data = body;
+    banner.hidden = true;
+    $('root').textContent = body.root;
+    $('copy').disabled = false;
+    if (view === 'classes') {
+      renderScopes();
+      if (body.scope) params.set('scope', body.scope);
+      history.replaceState(null, '', '/classes' + query());
+    }
+    $('download-mmd').href = V.mmd + query();
+    renderCards();
+    renderWarnings();
+    const empty = $('empty');
+    if (body.empty) {
+      empty.textContent = view === 'architecture'
+        ? 'There is no .NET project here yet. /setup creates the application; this page then shows it.'
+        : 'There is no C# code here yet. /setup creates the application; this page then shows its classes.';
+      empty.hidden = false;
+      $('stage').hidden = true;
+      return;
+    }
+    empty.hidden = true;
+    $('stage').hidden = false;
+    await draw();
+  } catch (err) {
+    banner.textContent = err.message;
+    banner.hidden = false;
+    $('status').hidden = true;
+  } finally {
+    $('refresh').disabled = false;
+  }
+}
+
+function download(name, type, text) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = el('a', { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function fileName() {
+  const scope = view === 'classes' && state.data && state.data.scope ? '-' + state.data.scope.replace(/[^A-Za-z0-9._-]+/g, '-') : '';
+  return V.file + scope;
+}
+
+// --- Page set-up ----------------------------------------------------------
+
+document.title = V.title + ' diagram';
+$('title').textContent = V.title;
+$('tab-' + view).setAttribute('aria-current', 'page');
+$('foot').textContent = V.foot;
+$('legend').replaceChildren(...V.legend.map(([what, means]) => el('li', {}, [el(/^[A-Za-z ]+$/.test(what) ? 'strong' : 'code', { text: what }), ' ' + means])));
+if (view === 'classes') {
+  for (const id of ['scope-label', 'members-label', 'related-label']) $(id).hidden = false;
+  $('members').checked = params.get('members') !== '0';
+  $('related').checked = params.get('related') !== '0';
+  for (const id of ['scope', 'members', 'related']) {
+    $(id).addEventListener('change', () => {
+      if (id === 'scope') state.mode = 'auto';
+      load();
+    });
+  }
+}
+$('refresh').addEventListener('click', load);
+$('copy').addEventListener('click', async () => {
+  const button = $('copy');
+  try {
+    await navigator.clipboard.writeText(state.data.mermaid);
+    button.textContent = 'Copied';
+  } catch {
+    button.textContent = 'Not copied - use Download .mmd';
+  }
+  setTimeout(() => (button.textContent = 'Copy Mermaid'), 2000);
+});
+$('download-svg').addEventListener('click', () => {
+  const size = naturalSize();
+  if (!state.svg || !size) return;
+  const copy = state.svg.cloneNode(true);
+  copy.setAttribute('width', String(Math.ceil(size.width)));
+  copy.setAttribute('height', String(Math.ceil(size.height)));
+  copy.style.removeProperty('width');
+  copy.style.removeProperty('height');
+  download(fileName() + '.svg', 'image/svg+xml', new XMLSerializer().serializeToString(copy));
+});
+$('zoom-in').addEventListener('click', () => zoomTo(state.zoom * 1.25));
+$('zoom-out').addEventListener('click', () => zoomTo(state.zoom / 1.25));
+$('zoom-reset').addEventListener('click', () => zoomTo(1));
+$('zoom-fit').addEventListener('click', () => {
+  state.mode = 'fit';
+  applyZoom();
+});
+$('stage').addEventListener('wheel', (event) => {
+  if (!event.ctrlKey || !state.svg) return;
+  event.preventDefault();
+  zoomTo(state.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
+}, { passive: false });
+window.addEventListener('resize', () => state.mode !== 'manual' && applyZoom());
+dark.addEventListener('change', draw);
+// Keeps the server's idle timer from stopping it while this page is open.
+setInterval(() => fetch('/api/health', { cache: 'no-store' }).catch(() => {}), 60_000);
+load();
+</script>
+</body>
+</html>
